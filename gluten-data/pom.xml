@@ -131,6 +131,23 @@
                     </execution>
                 </executions>
             </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <configuration>
+                    <shadedArtifactAttached>false</shadedArtifactAttached>
+                    <shadeTestJar>false</shadeTestJar>
+                    <relocations>
+                        <relocation>
+                            <pattern>com.google.protobuf</pattern>
+                            <shadedPattern>io.gluten-project.protobuf</shadedPattern>
+                            <includes>
+                                <include>com.google.protobuf.**</include>
+                            </includes>
+                        </relocation>
+                    </relocations>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
     <dependencies>
