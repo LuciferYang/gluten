@@ -137,7 +137,7 @@ bool StdMemoryAllocator::allocateZeroFilled(int64_t nmemb, int64_t size, void** 
   if (*out == nullptr) {
     return false;
   }
-  bytes_ += size;
+  bytes_ += nmemb * size;
   return true;
 }
 
