@@ -16,6 +16,7 @@
  */
 package org.apache.gluten.task
 
+import org.apache.spark.TaskContext
 import org.apache.spark.memory.{MemoryConsumer, MemoryMode}
 import org.apache.spark.sql.catalyst.plans.SQLHelper
 import org.apache.spark.sql.internal.SQLConf
@@ -61,6 +62,35 @@ class TaskResourceSuite extends AnyFunSuite with SQLHelper {
         assert(!SQLConf.get.adaptiveExecutionEnabled)
       }
     }
+  }
+
+  test("Run unsafe - exception propagation") {
+    val ex = intercept[RuntimeException] {
+      TaskResources.runUnsafe {
+        throw new RuntimeException("body failed")
+      }
+    }
+    assert(ex.getMessage == "body failed")
+  }
+
+  test("Run unsafe - addSuppressed when markTaskFailed throws") {
+    val bodyException = new RuntimeException("body failed")
+    val ex = intercept[RuntimeException] {
+      TaskResources.runUnsafe {
+        val context = TaskResources.getLocalTaskContext()
+        // Register a failure listener that throws, which will cause
+        // markTaskFailed to throw a secondary exception.
+        context.addTaskFailureListener(
+          (_: TaskContext, _: Throwable) => {
+            throw new RuntimeException("markTaskFailed side-effect")
+          })
+        throw bodyException
+      }
+    }
+    assert(ex eq bodyException)
+    val suppressed = ex.getSuppressed
+    assert(suppressed.length == 1, "exactly one secondary exception should be suppressed")
+    assert(suppressed(0).getMessage.contains("markTaskFailed side-effect"))
   }
 
   test("Run unsafe - register resource") {

@@ -104,8 +104,8 @@ object TaskResources extends TaskListener with Logging {
             try {
               context.markTaskFailed(t)
             } catch {
-              case t: Throwable =>
-                t.addSuppressed(t)
+              case t2: Throwable =>
+                t.addSuppressed(t2)
             }
             context.markTaskCompleted(Some(t))
             throw t
