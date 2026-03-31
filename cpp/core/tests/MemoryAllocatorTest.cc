@@ -25,12 +25,13 @@ TEST(StdMemoryAllocator, allocateZeroFilledAccounting) {
   ASSERT_EQ(allocator.getBytes(), 0);
 
   // allocateZeroFilled with nmemb=10, size=64 should track 10*64=640 bytes.
+  const int64_t expectedBytes = 10 * 64;
   void* buf = nullptr;
   bool ok = allocator.allocateZeroFilled(10, 64, &buf);
   ASSERT_TRUE(ok);
   ASSERT_NE(buf, nullptr);
-  ASSERT_EQ(allocator.getBytes(), 640);
+  ASSERT_EQ(allocator.getBytes(), expectedBytes);
 
-  allocator.free(buf, 640);
+  ASSERT_TRUE(allocator.free(buf, expectedBytes));
   ASSERT_EQ(allocator.getBytes(), 0);
 }
