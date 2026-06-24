@@ -199,29 +199,34 @@ public class ConsistentHash<T extends ConsistentHash.Node> {
   }
 
   private boolean add(T node) {
-    boolean added = false;
-    if (node != null && !nodes.containsKey(node)) {
-      Preconditions.checkArgument(node.key() != null, "Node key must not be null: %s", node);
-      Set<Partition<T>> partitions =
-          IntStream.range(0, replicate)
-              .mapToObj(idx -> new Partition<T>(node, idx))
-              .collect(Collectors.toSet());
-      nodes.put(node, partitions);
-
-      // allocate slot.
-      for (Partition<T> partition : partitions) {
-        long slot;
-        int seed = 0;
-        do {
-          slot = this.hasher.hash(partition.getPartitionKey(), seed++);
-        } while (ring.containsKey(slot));
-
-        partition.setSlot(slot);
-        ring.put(slot, partition);
-      }
-      added = true;
+    if (node == null) {
+      return false;
     }
-    return added;
+    // Validate the key before any map lookup: nodes.containsKey() invokes the node's
+    // hashCode()/equals(), which may themselves dereference key() and NPE on a null key, masking
+    // the intended fail-fast here.
+    Preconditions.checkArgument(node.key() != null, "Node key must not be null: %s", node);
+    if (nodes.containsKey(node)) {
+      return false;
+    }
+    Set<Partition<T>> partitions =
+        IntStream.range(0, replicate)
+            .mapToObj(idx -> new Partition<T>(node, idx))
+            .collect(Collectors.toSet());
+    nodes.put(node, partitions);
+
+    // allocate slot.
+    for (Partition<T> partition : partitions) {
+      long slot;
+      int seed = 0;
+      do {
+        slot = this.hasher.hash(partition.getPartitionKey(), seed++);
+      } while (ring.containsKey(slot));
+
+      partition.setSlot(slot);
+      ring.put(slot, partition);
+    }
+    return true;
   }
 
   public static class Partition<T extends ConsistentHash.Node> {
@@ -229,18 +234,21 @@ public class ConsistentHash<T extends ConsistentHash.Node> {
 
     private final int index;
 
+    // Hash the node by its logical key() so the ring is stable and reproducible across JVMs (avoid
+    // node.toString(), which may fall back to the identity hash). Computed once: the key is
+    // immutable and re-read on every collision-retry in add().
+    private final String partitionKey;
+
     private long slot;
 
     public Partition(T node, int index) {
       this.node = node;
       this.index = index;
+      this.partitionKey = node.key() + ":" + index;
     }
 
     public String getPartitionKey() {
-      // Hash the node by its logical key() so the ring is stable and reproducible across JVMs.
-      // Avoid node.toString() (which may default to the identity hash) and String.format (slow on
-      // this hot path, called per virtual node during add()).
-      return node.key() + ":" + index;
+      return partitionKey;
     }
 
     public T getNode() {
