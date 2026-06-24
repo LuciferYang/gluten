@@ -201,6 +201,7 @@ public class ConsistentHash<T extends ConsistentHash.Node> {
   private boolean add(T node) {
     boolean added = false;
     if (node != null && !nodes.containsKey(node)) {
+      Preconditions.checkArgument(node.key() != null, "Node key must not be null: %s", node);
       Set<Partition<T>> partitions =
           IntStream.range(0, replicate)
               .mapToObj(idx -> new Partition<T>(node, idx))
@@ -236,7 +237,10 @@ public class ConsistentHash<T extends ConsistentHash.Node> {
     }
 
     public String getPartitionKey() {
-      return String.format("%s:%d", node, index);
+      // Hash the node by its logical key() so the ring is stable and reproducible across JVMs.
+      // Avoid node.toString() (which may default to the identity hash) and String.format (slow on
+      // this hot path, called per virtual node during add()).
+      return node.key() + ":" + index;
     }
 
     public T getNode() {
@@ -254,6 +258,12 @@ public class ConsistentHash<T extends ConsistentHash.Node> {
 
   /** Base interface for the node in the ring. */
   public interface Node {
+    /**
+     * A stable, non-null identifier for this node. The ring hashes each virtual node by this key,
+     * so it MUST be deterministic across JVMs and process restarts (e.g. derived from a host or
+     * executor id) and consistent with {@link Object#equals}: two equal nodes must return the same
+     * key. Returning identity- or {@code toString()}-based values breaks ring stability.
+     */
     String key();
   }
 
