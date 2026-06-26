@@ -258,7 +258,11 @@ public class ConsistentHash<T extends ConsistentHash.Node> {
       return node;
     }
 
-    public void setSlot(long slot) {
+    // Non-public on purpose: only ConsistentHash.add() assigns the slot, during ring construction
+    // (accessible as a nestmate). Keeping it out of the public API stops callers of getPartition()
+    // from mutating ring state through a returned Partition (e.g. changing a slot so removeNode()
+    // drops the wrong entry).
+    private void setSlot(long slot) {
       this.slot = slot;
     }
 
