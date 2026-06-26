@@ -162,7 +162,10 @@ public class ConsistentHash<T extends ConsistentHash.Node> {
   public Set<Partition<T>> getPartition(T node) {
     lock.readLock().lock();
     try {
-      return nodes.get(node);
+      // Return a defensive copy: the map value is internal mutable state, and getNodes() copies
+      // for the same reason. Callers get a snapshot they can't use to mutate the ring.
+      Set<Partition<T>> partitions = nodes.get(node);
+      return partitions == null ? null : new HashSet<>(partitions);
     } finally {
       lock.readLock().unlock();
     }
