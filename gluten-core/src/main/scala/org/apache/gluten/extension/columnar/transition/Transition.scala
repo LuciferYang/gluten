@@ -166,9 +166,6 @@ object Transition {
             }
           case (ConventionReq.RowType.Any, ConventionReq.BatchType.Any) =>
             Transition.empty
-          case _ =>
-            throw new UnsupportedOperationException(
-              s"Illegal convention requirement: $ConventionReq")
         }
         out
       }
