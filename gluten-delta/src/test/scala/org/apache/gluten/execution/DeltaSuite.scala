@@ -109,9 +109,7 @@ abstract class DeltaSuite extends WholeStageTransformerSuite {
   // broke `PreparedDeltaFileIndex.matchingFiles` and silently returned all files.
   Seq("name", "id").foreach {
     mode =>
-      testWithMinSparkVersion(
-        s"column mapping mode = $mode with partition filter (single partition col)",
-        "3.2") {
+      test(s"column mapping mode = $mode with partition filter (single partition col)") {
         withTable("delta_cm_part") {
           spark.sql(s"""
                        |create table delta_cm_part (id int, name string) using delta
@@ -152,9 +150,7 @@ abstract class DeltaSuite extends WholeStageTransformerSuite {
         }
       }
 
-      testWithMinSparkVersion(
-        s"column mapping mode = $mode with partition filter (multi partition col)",
-        "3.2") {
+      test(s"column mapping mode = $mode with partition filter (multi partition col)") {
         withTable("delta_cm_part_multi") {
           spark.sql(s"""
                        |create table delta_cm_part_multi
@@ -184,9 +180,7 @@ abstract class DeltaSuite extends WholeStageTransformerSuite {
         }
       }
 
-      testWithMinSparkVersion(
-        s"column mapping mode = $mode with partition + data filter",
-        "3.2") {
+      test(s"column mapping mode = $mode with partition + data filter") {
         withTable("delta_cm_part_data") {
           spark.sql(s"""
                        |create table delta_cm_part_data (id int, name string, age int)
@@ -219,9 +213,7 @@ abstract class DeltaSuite extends WholeStageTransformerSuite {
         }
       }
 
-      testWithMinSparkVersion(
-        s"column mapping mode = $mode with IS [NOT] NULL on partition col",
-        "3.2") {
+      test(s"column mapping mode = $mode with IS [NOT] NULL on partition col") {
         withTable("delta_cm_part_null") {
           spark.sql(s"""
                        |create table delta_cm_part_null (id int, name string)
@@ -246,9 +238,7 @@ abstract class DeltaSuite extends WholeStageTransformerSuite {
         }
       }
 
-      testWithMinSparkVersion(
-        s"column mapping mode = $mode partition filter survives column rename",
-        "3.2") {
+      test(s"column mapping mode = $mode partition filter survives column rename") {
         withTable("delta_cm_part_rename") {
           spark.sql(s"""
                        |create table delta_cm_part_rename (id int, name string)
@@ -271,9 +261,7 @@ abstract class DeltaSuite extends WholeStageTransformerSuite {
         }
       }
 
-      testWithMinSparkVersion(
-        s"column mapping mode = $mode data column rename + filter (file skipping)",
-        "3.2") {
+      test(s"column mapping mode = $mode data column rename + filter (file skipping)") {
         withTable("delta_cm_data_rename") {
           spark.sql(s"""
                        |create table delta_cm_data_rename (id int, age int, name string)
