@@ -16,4 +16,6 @@
  */
 package org.apache.gluten.extension.columnar.cost
 
-trait GlutenCost
+sealed trait GlutenCost
+
+case class LongCost(value: Long) extends GlutenCost

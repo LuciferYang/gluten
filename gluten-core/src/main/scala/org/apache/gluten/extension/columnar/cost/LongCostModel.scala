@@ -61,7 +61,6 @@ abstract class LongCostModel extends GlutenCostModel {
 
   override def costComparator(): Ordering[GlutenCost] = Ordering.Long.on {
     case LongCost(value) => value
-    case _ => throw new IllegalStateException("Unexpected cost type")
   }
 
   override def makeInfCost(): GlutenCost = LongCost(infLongCost)
