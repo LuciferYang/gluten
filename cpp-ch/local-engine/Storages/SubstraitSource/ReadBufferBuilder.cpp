@@ -327,8 +327,8 @@ public:
             if (!file_size.has_value())
             {
                 // Fallback for callers whose Substrait LocalFilesNode was built without a
-                // fileSize list (e.g. some Iceberg producers). Compute the size by opening
-                // the HDFS file first.
+                // `fileSizes` input (e.g. some Iceberg producers), so no per-file `fileSize`
+                // property is available. Compute the size by opening the HDFS file first.
                 auto tmp_read_buffer = std::make_unique<DB::ReadBufferFromHDFS>(
                     hdfs_uri,
                     hdfs_file_path,
