@@ -78,7 +78,17 @@ object SparkResourceUtil extends Logging {
   def getTaskSlots(conf: SparkConf): Int = {
     val executorCores = SparkResourceUtil.getExecutorCores(conf)
     val taskCores = conf.getInt("spark.task.cpus", 1)
-    executorCores / taskCores
+    if (taskCores <= 0) {
+      // spark.task.cpus <= 0 is invalid; Spark rejects it in its own validation, which runs after
+      // the driver plugin init where callers divide by the slot count. Return a single slot so we
+      // don't pre-empt that check with an opaque "/ by zero" ArithmeticException.
+      1
+    } else {
+      // Floor at one slot. spark.task.cpus > executor cores is an invalid combo that Spark also
+      // rejects later, but callers divide by the slot count during init, so a 0 quotient would
+      // throw before Spark can report the real misconfiguration.
+      Math.max(executorCores / taskCores, 1)
+    }
   }
 
   def isLocalMaster(conf: SparkConf): Boolean = {
