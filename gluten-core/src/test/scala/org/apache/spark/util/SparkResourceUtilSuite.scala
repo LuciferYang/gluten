@@ -49,8 +49,8 @@ class SparkResourceUtilSuite extends AnyFunSuite {
     assert(SparkResourceUtil.getTaskSlots(conf) == 4)
   }
 
-  test("getTaskSlots returns one core per slot by default") {
-    val conf = new SparkConf(false).set("spark.master", "local[1]")
-    assert(SparkResourceUtil.getTaskSlots(conf) == 1)
+  test("getTaskSlots returns one slot per core when task cpus defaults to one") {
+    val conf = new SparkConf(false).set("spark.master", "local[8]")
+    assert(SparkResourceUtil.getTaskSlots(conf) == 8)
   }
 }
