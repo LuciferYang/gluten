@@ -33,13 +33,25 @@ class SparkResourceUtilSuite extends AnyFunSuite {
     assert(SparkResourceUtil.getTaskSlots(conf) == 1)
   }
 
-  test("getTaskSlots does not divide by zero when task cpus is zero") {
-    // spark.task.cpus is read via raw conf.getInt, which bypasses Spark's checkValue(_ > 0), so a
-    // zero value must not reach the division.
+  test("getTaskSlots fails fast when task cpus is zero") {
+    // spark.task.cpus is read via raw conf.getInt, which bypasses Spark's checkValue(_ > 0) (a
+    // check that only exists on Spark >= 4.2), so a zero value must not reach the division. Fail
+    // fast with a clear message instead of an opaque "/ by zero" ArithmeticException.
     val conf = new SparkConf(false)
       .set("spark.master", "local[8]")
       .set("spark.task.cpus", "0")
-    assert(SparkResourceUtil.getTaskSlots(conf) == 1)
+    val e = intercept[IllegalArgumentException](SparkResourceUtil.getTaskSlots(conf))
+    assert(e.getMessage.contains("spark.task.cpus should be positive"))
+  }
+
+  test("getTaskSlots fails fast when task cpus is negative") {
+    // A negative spark.task.cpus would otherwise divide to a negative slot count, silently yielding
+    // negative per-task off-heap budgets. Fail fast rather than propagate the bad value.
+    val conf = new SparkConf(false)
+      .set("spark.master", "local[8]")
+      .set("spark.task.cpus", "-2")
+    val e = intercept[IllegalArgumentException](SparkResourceUtil.getTaskSlots(conf))
+    assert(e.getMessage.contains("spark.task.cpus should be positive"))
   }
 
   test("getTaskSlots divides executor cores by task cpus") {
