@@ -110,4 +110,16 @@ object SparkResourceUtil extends Logging {
     }
     ByteUnit.MiB.toBytes(overheadMib)
   }
+
+  /**
+   * Returns spark.executor.memory in bytes.
+   *
+   * Spark declares the config as bytesConf(ByteUnit.MiB), so a value without a size suffix means
+   * MiB. Reading it with SparkConf#getSizeAsBytes would instead treat a bare value as bytes, and
+   * getting that wrong by a factor of 2^20 turns derived memory budgets negative. Reading through
+   * the typed entry also picks up Spark's own default of 1g.
+   */
+  def getExecutorMemorySize(conf: SparkConf): Long = {
+    ByteUnit.MiB.toBytes(conf.get(EXECUTOR_MEMORY))
+  }
 }

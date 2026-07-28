@@ -65,4 +65,22 @@ class SparkResourceUtilSuite extends AnyFunSuite {
     val conf = new SparkConf(false).set("spark.master", "local[8]")
     assert(SparkResourceUtil.getTaskSlots(conf) == 8)
   }
+
+  test("getExecutorMemorySize reads a bare spark.executor.memory as MiB") {
+    // Spark defines spark.executor.memory as bytesConf(ByteUnit.MiB), so a value without a size
+    // suffix means MiB. Reading it with SparkConf#getSizeAsBytes would treat 8192 as 8192 bytes.
+    val conf = new SparkConf(false).set("spark.executor.memory", "8192")
+    assert(SparkResourceUtil.getExecutorMemorySize(conf) == 8192L * 1024 * 1024)
+  }
+
+  test("getExecutorMemorySize honours a size suffix on spark.executor.memory") {
+    val conf = new SparkConf(false).set("spark.executor.memory", "8g")
+    assert(SparkResourceUtil.getExecutorMemorySize(conf) == 8L * 1024 * 1024 * 1024)
+  }
+
+  test("getExecutorMemorySize falls back to the Spark default when unset") {
+    // spark.executor.memory defaults to 1g in Spark.
+    val conf = new SparkConf(false)
+    assert(SparkResourceUtil.getExecutorMemorySize(conf) == 1024L * 1024 * 1024)
+  }
 }
