@@ -51,6 +51,11 @@ trait Component {
     dependencies().foreach(req => graph.declareDependency(this, req))
   }
 
+  // Visible for testing. Paired with Graph#clear so a cleared component can register again.
+  private[component] def resetRegisteredForTesting(): Unit = {
+    isRegistered.set(false)
+  }
+
   /**
    * Determines whether a component should be registered based on runtime conditions. For instance,
    * if a component depends on a Spark extension's JAR, this method should be overridden to check
@@ -124,6 +129,18 @@ object Component extends Logging {
     graph.sorted()
   }
 
+  /**
+   * Removes all registered components from the graph, and resets their registration flags so they
+   * can be registered again.
+   *
+   * Visible for testing. The graph is JVM-global, so a suite that registers components into it
+   * leaks them into every later suite that calls #sorted. Such a suite must call
+   * [[org.apache.gluten.component.clearAllForTesting]] when it finishes.
+   */
+  private[component] def clearForTesting(): Unit = {
+    graph.clear()
+  }
+
   private class Registry {
     private val lookupByUid: mutable.Map[Int, Component] = mutable.Map()
     private val lookupByClass: mutable.Map[Class[_ <: Component], Component] = mutable.Map()
@@ -137,6 +154,12 @@ object Component extends Logging {
         s"Component class $clazz already registered: ${comp.name()}")
       lookupByUid(uid) = comp
       lookupByClass(clazz) = comp
+    }
+
+    def clear(): Unit = synchronized {
+      lookupByUid.values.foreach(_.resetRegisteredForTesting())
+      lookupByUid.clear()
+      lookupByClass.clear()
     }
 
     def isUidRegistered(uid: Int): Boolean = synchronized {
@@ -188,6 +211,12 @@ object Component extends Logging {
         uidAndDependencyPairs += comp.uid -> dependencyCompClass
         sortedComponents = None
       }
+
+    def clear(): Unit = synchronized {
+      registry.clear()
+      uidAndDependencyPairs.clear()
+      sortedComponents = None
+    }
 
     private def newLookup(): Map[Int, Node] = {
       val uidToNodeLookup: mutable.Map[Int, Node] = mutable.Map()

@@ -45,4 +45,17 @@ package object component extends Logging {
     )
     logInfo(s"Components registered within order: ${components.map(_.name()).mkString(", ")}")
   }
+
+  /**
+   * Empties the component graph and lets the next call to [[Component.sorted]] rediscover the
+   * components on the classpath.
+   *
+   * Visible for testing. The graph and the discovery latch are both JVM-global, so a suite that
+   * registers components of its own leaks them into every later suite in the same JVM. Such a suite
+   * must call this when it finishes.
+   */
+  private[gluten] def clearAllForTesting(): Unit = {
+    Component.clearForTesting()
+    allComponentsLoaded.set(false)
+  }
 }
