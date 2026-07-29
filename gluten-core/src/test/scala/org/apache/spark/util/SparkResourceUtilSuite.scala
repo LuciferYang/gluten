@@ -83,4 +83,20 @@ class SparkResourceUtilSuite extends AnyFunSuite {
     val conf = new SparkConf(false)
     assert(SparkResourceUtil.getExecutorMemorySize(conf) == 1024L * 1024 * 1024)
   }
+
+  test("getExecutorMemorySize rejects an executor memory that overflows on conversion") {
+    // The MiB-to-byte conversion multiplies by 2^20, so a suffix-less byte count large enough to
+    // overflow must fail rather than wrap to a negative budget.
+    val conf = new SparkConf(false).set("spark.executor.memory", "9000000000000")
+    val e = intercept[IllegalArgumentException](SparkResourceUtil.getExecutorMemorySize(conf))
+    assert(e.getMessage.contains("exceeds Long.MAX_VALUE"))
+  }
+
+  test("getExecutorMemorySize rejects a negative executor memory") {
+    // Spark's typed entry carries no positivity check, and the conversion would pass a negative
+    // through, so guard it here rather than propagate a negative budget.
+    val conf = new SparkConf(false).set("spark.executor.memory", "-8192")
+    val e = intercept[IllegalArgumentException](SparkResourceUtil.getExecutorMemorySize(conf))
+    assert(e.getMessage.contains("spark.executor.memory should not be negative"))
+  }
 }

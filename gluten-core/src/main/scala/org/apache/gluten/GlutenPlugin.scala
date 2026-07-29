@@ -111,8 +111,6 @@ private object GlutenDriverPlugin extends Logging {
     // Get the off-heap size set by user.
     val offHeapSize =
       if (conf.getBoolean(GlutenCoreConfig.DYNAMIC_OFFHEAP_SIZING_ENABLED.key, false)) {
-        // spark.executor.memory is MiB-unless-suffixed, and Spark defaults it to 1g, so read it
-        // through the typed entry rather than SparkConf#getSizeAsBytes.
         val onHeapSize: Long = SparkResourceUtil.getExecutorMemorySize(conf)
 
         if (conf.contains(GlutenCoreConfig.SPARK_OFFHEAP_ENABLED_KEY)) {
