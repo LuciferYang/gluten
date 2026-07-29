@@ -47,12 +47,20 @@ trait Component {
     if (!isRegistered.compareAndSet(false, true)) {
       return
     }
-    graph.add(this)
+    try {
+      graph.add(this)
+    } catch {
+      // Nothing entered the graph, so Graph#clear will not see this component and cannot reset
+      // its flag. Roll the flag back here to keep it in sync with the graph.
+      case t: Throwable =>
+        isRegistered.set(false)
+        throw t
+    }
     dependencies().foreach(req => graph.declareDependency(this, req))
   }
 
   // Visible for testing. Paired with Graph#clear so a cleared component can register again.
-  private[component] def resetRegisteredForTesting(): Unit = {
+  final private[component] def resetRegisteredForTesting(): Unit = {
     isRegistered.set(false)
   }
 
@@ -129,14 +137,8 @@ object Component extends Logging {
     graph.sorted()
   }
 
-  /**
-   * Removes all registered components from the graph, and resets their registration flags so they
-   * can be registered again.
-   *
-   * Visible for testing. The graph is JVM-global, so a suite that registers components into it
-   * leaks them into every later suite that calls #sorted. Such a suite must call
-   * [[org.apache.gluten.component.clearAllForTesting]] when it finishes.
-   */
+  // Visible for testing. Internal to component.clearAllForTesting; does not touch the discovery
+  // latch.
   private[component] def clearForTesting(): Unit = {
     graph.clear()
   }
