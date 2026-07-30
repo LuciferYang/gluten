@@ -28,6 +28,7 @@ import org.apache.spark.internal.Logging
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
 
 import scala.collection.mutable
+import scala.util.control.NonFatal
 
 /**
  * The base API to inject user-defined logic to Gluten. To register a component, the implementation
@@ -52,7 +53,7 @@ trait Component {
     } catch {
       // Nothing entered the graph, so Graph#clear will not see this component and cannot reset
       // its flag. Roll the flag back here to keep it in sync with the graph.
-      case t: Throwable =>
+      case NonFatal(t) =>
         isRegistered.set(false)
         throw t
     }
