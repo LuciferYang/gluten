@@ -24,6 +24,7 @@ import org.apache.spark.SparkConf
 import org.apache.spark.annotation.Experimental
 import org.apache.spark.internal.Logging
 import org.apache.spark.internal.config.{CPUS_PER_TASK, EXECUTOR_CORES, MEMORY_OFFHEAP_SIZE}
+import org.apache.spark.network.util.ByteUnit
 import org.apache.spark.resource.{ExecutorResourceRequest, ResourceProfile, ResourceProfileManager, TaskResourceRequest}
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.rules.Rule
@@ -192,9 +193,12 @@ object GlutenAutoAdjustStageResourceProfile extends Logging {
     val taskSlots = coresPerExecutor / coresPerTask
     val conf = SQLConf.get
     conf.setConfString(GlutenCoreConfig.NUM_TASK_SLOTS_PER_EXECUTOR.key, taskSlots.toString)
+    // A resource profile records executor memory amounts in MiB, while the two configs written
+    // below are declared as bytesConf(ByteUnit.BYTE), as is the MEMORY_OFFHEAP_SIZE fallback.
+    // Convert so both branches feed bytes.
     val offHeapSize = rp.executorResources
       .get(ResourceProfile.OFFHEAP_MEM)
-      .map(_.amount)
+      .map(request => ByteUnit.MiB.convertTo(request.amount, ByteUnit.BYTE))
       .getOrElse(sparkConf.get(MEMORY_OFFHEAP_SIZE))
     conf.setConfString(GlutenCoreConfig.COLUMNAR_OFFHEAP_SIZE_IN_BYTES.key, offHeapSize.toString)
     conf.setConfString(

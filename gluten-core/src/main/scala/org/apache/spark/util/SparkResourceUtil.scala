@@ -105,7 +105,10 @@ object SparkResourceUtil extends Logging {
       val executorMemMib = conf.get(EXECUTOR_MEMORY)
       val factor =
         conf.getDouble(MEMORY_OVERHEAD_FACTOR, 0.1d)
-      val minMib = conf.getLong(MIN_MEMORY_OVERHEAD, 384L)
+      // spark.executor.minMemoryOverhead is a size string, MiB unless suffixed, so getLong would
+      // fail to parse anything carrying a unit. getSizeAsMb keeps the value in MiB, which is what
+      // the max below compares against.
+      val minMib = conf.getSizeAsMb(MIN_MEMORY_OVERHEAD, "384m")
       (executorMemMib * factor).toLong.max(minMib)
     }
     ByteUnit.MiB.toBytes(overheadMib)

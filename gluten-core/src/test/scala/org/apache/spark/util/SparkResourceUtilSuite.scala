@@ -99,4 +99,27 @@ class SparkResourceUtilSuite extends AnyFunSuite {
     val e = intercept[IllegalArgumentException](SparkResourceUtil.getExecutorMemorySize(conf))
     assert(e.getMessage.contains("spark.executor.memory should not be negative"))
   }
+
+  test("getMemoryOverheadSize honours a size suffix on the minimum overhead") {
+    // spark.executor.minMemoryOverhead is a size string, so reading it with conf.getLong throws
+    // NumberFormatException on any value carrying a unit. VeloxListenerApi#onDriverStart calls this
+    // unconditionally, so that would abort driver startup on a value Spark itself accepts.
+    val conf = new SparkConf(false)
+      .set("spark.executor.memory", "1g")
+      .set("spark.executor.minMemoryOverhead", "512m")
+    assert(SparkResourceUtil.getMemoryOverheadSize(conf) == 512L * 1024 * 1024)
+  }
+
+  test("getMemoryOverheadSize falls back to the 384m minimum overhead") {
+    val conf = new SparkConf(false).set("spark.executor.memory", "1g")
+    assert(SparkResourceUtil.getMemoryOverheadSize(conf) == 384L * 1024 * 1024)
+  }
+
+  test("getMemoryOverheadSize prefers the factor when it exceeds the minimum") {
+    // 8g * 0.1 = 819 MiB, above the 384 MiB floor.
+    val conf = new SparkConf(false)
+      .set("spark.executor.memory", "8g")
+      .set("spark.executor.minMemoryOverhead", "512m")
+    assert(SparkResourceUtil.getMemoryOverheadSize(conf) == 819L * 1024 * 1024)
+  }
 }
