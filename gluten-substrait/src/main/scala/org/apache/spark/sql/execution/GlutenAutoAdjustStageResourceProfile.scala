@@ -24,7 +24,6 @@ import org.apache.spark.SparkConf
 import org.apache.spark.annotation.Experimental
 import org.apache.spark.internal.Logging
 import org.apache.spark.internal.config.{CPUS_PER_TASK, EXECUTOR_CORES, MEMORY_OFFHEAP_SIZE}
-import org.apache.spark.network.util.ByteUnit
 import org.apache.spark.resource.{ExecutorResourceRequest, ResourceProfile, ResourceProfileManager, TaskResourceRequest}
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.rules.Rule
@@ -33,7 +32,7 @@ import org.apache.spark.sql.execution.adaptive.QueryStageExec
 import org.apache.spark.sql.execution.command.{DataWritingCommandExec, ExecutedCommandExec}
 import org.apache.spark.sql.execution.exchange.Exchange
 import org.apache.spark.sql.internal.SQLConf
-import org.apache.spark.util.SparkTestUtil
+import org.apache.spark.util.{SparkResourceUtil, SparkTestUtil}
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
@@ -67,7 +66,8 @@ case class GlutenAutoAdjustStageResourceProfile(glutenConf: GlutenConfig, spark:
     // profile is applied, the settings will be updated accordingly.
     GlutenResourceProfile.updateResourceSetting(
       ResourceProfile.getOrCreateDefaultProfile(sparkConf),
-      sparkConf)
+      sparkConf,
+      isDefaultProfile = true)
     if (!plan.isInstanceOf[Exchange]) {
       // todo: support set resource profile for final stage
       return plan
@@ -184,22 +184,44 @@ object GlutenAutoAdjustStageResourceProfile extends Logging {
   }
 
   /**
-   * Reflects resource changes in some configurations that will be passed to the native side. It
-   * only affects the current thread.
+   * Reflects resource changes in some configurations that will be passed to the native side.
+   *
+   * The values are written into the active SQLConf. On the driver, outside a task and outside
+   * SQLConf#withExistingConf, that is the session's own conf, so the writes are visible to every
+   * thread using the session and outlive the query that triggered them.
    */
-  def updateResourceSetting(rp: ResourceProfile, sparkConf: SparkConf): Unit = {
-    val coresPerExecutor = rp.getExecutorCores.getOrElse(sparkConf.get(EXECUTOR_CORES))
-    val coresPerTask = rp.getTaskCpus.getOrElse(sparkConf.get(CPUS_PER_TASK))
-    val taskSlots = coresPerExecutor / coresPerTask
+  def updateResourceSetting(
+      rp: ResourceProfile,
+      sparkConf: SparkConf,
+      isDefaultProfile: Boolean = false): Unit = {
+    // Resource profiles never take effect in local mode, where a profile reports
+    // spark.executor.cores (1 by default) rather than the local[N] thread count that
+    // SparkResourceUtil and GlutenPlugin resolve. Defer to the shared resolver there so the rule
+    // and the plugin agree on the slot count; elsewhere the profile's own values are authoritative.
+    val taskSlots = if (SparkResourceUtil.isLocalMaster(sparkConf)) {
+      SparkResourceUtil.getTaskSlots(sparkConf)
+    } else {
+      val coresPerExecutor = rp.getExecutorCores.getOrElse(sparkConf.get(EXECUTOR_CORES))
+      val coresPerTask = rp.getTaskCpus.getOrElse(sparkConf.get(CPUS_PER_TASK))
+      require(coresPerTask > 0, s"${CPUS_PER_TASK.key} should be positive, but was $coresPerTask")
+      // Floor at one slot so the division below cannot throw on a combination Spark itself rejects
+      // later with a dedicated message.
+      Math.max(coresPerExecutor / coresPerTask, 1)
+    }
     val conf = SQLConf.get
     conf.setConfString(GlutenCoreConfig.NUM_TASK_SLOTS_PER_EXECUTOR.key, taskSlots.toString)
     // A resource profile records executor memory amounts in MiB, while the two configs written
-    // below are declared as bytesConf(ByteUnit.BYTE), as is the MEMORY_OFFHEAP_SIZE fallback.
-    // Convert so both branches feed bytes.
-    val offHeapSize = rp.executorResources
-      .get(ResourceProfile.OFFHEAP_MEM)
-      .map(request => ByteUnit.MiB.convertTo(request.amount, ByteUnit.BYTE))
-      .getOrElse(sparkConf.get(MEMORY_OFFHEAP_SIZE))
+    // below are declared as bytesConf(ByteUnit.BYTE). The unmodified default profile carries the
+    // same off-heap size the conf does, only truncated to MiB, so read the conf directly there to
+    // keep this in step with what GlutenPlugin wrote at driver init.
+    val offHeapSize = if (isDefaultProfile) {
+      sparkConf.get(MEMORY_OFFHEAP_SIZE)
+    } else {
+      rp.executorResources
+        .get(ResourceProfile.OFFHEAP_MEM)
+        .map(request => SparkResourceUtil.mibToBytes(request.amount))
+        .getOrElse(sparkConf.get(MEMORY_OFFHEAP_SIZE))
+    }
     conf.setConfString(GlutenCoreConfig.COLUMNAR_OFFHEAP_SIZE_IN_BYTES.key, offHeapSize.toString)
     conf.setConfString(
       GlutenCoreConfig.COLUMNAR_TASK_OFFHEAP_SIZE_IN_BYTES.key,

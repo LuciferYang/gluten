@@ -111,7 +111,7 @@ object SparkResourceUtil extends Logging {
       val minMib = conf.getSizeAsMb(MIN_MEMORY_OVERHEAD, "384m")
       (executorMemMib * factor).toLong.max(minMib)
     }
-    ByteUnit.MiB.toBytes(overheadMib)
+    mibToBytes(overheadMib)
   }
 
   /**
@@ -120,14 +120,25 @@ object SparkResourceUtil extends Logging {
    * Spark declares the config as bytesConf(ByteUnit.MiB), so a value without a size suffix means
    * MiB, and SparkConf#getSizeAsBytes must not be used to read it. This matches how Spark itself
    * reads the config on YARN and K8s. Standalone and local-cluster differ: there Spark resolves it
-   * through SparkContext#executorMemoryInMb, which treats a suffix-less value as bytes.
+   * through the executor-memory-in-MiB path (SparkContext#executorMemoryInMb on Spark 3.4+), which
+   * treats a suffix-less value as bytes.
    */
   def getExecutorMemorySize(conf: SparkConf): Long = {
     val memoryMib = conf.get(EXECUTOR_MEMORY)
-    // The typed entry carries no positivity check, and ByteUnit#toBytes would silently wrap a
-    // large value. convertTo throws instead of wrapping, so guard the sign and let it guard the
-    // magnitude.
     require(memoryMib >= 0, s"${EXECUTOR_MEMORY.key} should not be negative, but was $memoryMib")
+    mibToBytes(memoryMib)
+  }
+
+  /**
+   * Converts a MiB-valued Spark memory amount to bytes.
+   *
+   * ByteUnit#toBytes rejects a negative input but wraps silently on overflow, while
+   * ByteUnit#convertTo raises on overflow but passes a negative through, so guard the sign here and
+   * let convertTo guard the magnitude. Callers that can name the offending config add their own
+   * require first so that the more specific message wins.
+   */
+  def mibToBytes(memoryMib: Long): Long = {
+    require(memoryMib >= 0, s"Memory size in MiB should not be negative, but was $memoryMib")
     ByteUnit.MiB.convertTo(memoryMib, ByteUnit.BYTE)
   }
 }

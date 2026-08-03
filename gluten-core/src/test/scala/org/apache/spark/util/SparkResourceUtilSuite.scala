@@ -122,4 +122,32 @@ class SparkResourceUtilSuite extends AnyFunSuite {
       .set("spark.executor.minMemoryOverhead", "512m")
     assert(SparkResourceUtil.getMemoryOverheadSize(conf) == 819L * 1024 * 1024)
   }
+
+  test("getMemoryOverheadSize reads a suffix-less minimum overhead as MiB") {
+    // The value users are most likely to already have. It read the same before the switch to
+    // getSizeAsMb, so nothing pinned it; a future accessor change could silently reinterpret it.
+    val conf = new SparkConf(false)
+      .set("spark.executor.memory", "1g")
+      .set("spark.executor.minMemoryOverhead", "512")
+    assert(SparkResourceUtil.getMemoryOverheadSize(conf) == 512L * 1024 * 1024)
+  }
+
+  test("getMemoryOverheadSize rejects an overhead that overflows on conversion") {
+    // spark.executor.memoryOverhead is MiB-declared and carries no magnitude check, so the
+    // MiB-to-byte conversion must raise rather than wrap to a negative budget.
+    val conf = new SparkConf(false)
+      .set("spark.executor.memory", "1g")
+      .set("spark.executor.memoryOverhead", "9000000000000")
+    val e = intercept[IllegalArgumentException](SparkResourceUtil.getMemoryOverheadSize(conf))
+    assert(e.getMessage.contains("exceeds Long.MAX_VALUE"))
+  }
+
+  test("getMemoryOverheadSize rejects a negative explicit overhead") {
+    // An explicit spark.executor.memoryOverhead skips the floor below, so guard the conversion.
+    val conf = new SparkConf(false)
+      .set("spark.executor.memory", "1g")
+      .set("spark.executor.memoryOverhead", "-1")
+    val e = intercept[IllegalArgumentException](SparkResourceUtil.getMemoryOverheadSize(conf))
+    assert(e.getMessage.contains("should not be negative"))
+  }
 }
