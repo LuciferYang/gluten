@@ -21,7 +21,7 @@ import org.apache.gluten.extension.columnar.cost.LongCostModel
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.Attribute
-import org.apache.spark.sql.execution.{LeafExecNode, SparkPlan, UnaryExecNode}
+import org.apache.spark.sql.execution.{SparkPlan, UnaryExecNode}
 
 import org.scalatest.funsuite.AnyFunSuite
 
@@ -32,11 +32,11 @@ class TransitionCostModelSuite extends AnyFunSuite {
     // The tiebreaker used to subtract the two hash codes. "RowToVeloxColumnar" hashes to
     // 2056048280 and "CHColumnarToCarrierRow" to -2037667767, so the true difference is
     // 4093716047, past Int.MaxValue, and the subtraction wrapped to -201251249. That inverted
-    // sign makes FloydWarshallGraph#build replace an incumbent path with an equal-cost one it
-    // should have kept. 46 of the 110 ordered pairs of Gluten transition node names invert.
-    val comparator = TransitionGraph.asTransitionCostModel(TestCostModel).costComparator()
-    val higherHash = costOf(Seq("RowToVeloxColumnar"))
-    val lowerHash = costOf(Seq("CHColumnarToCarrierRow"))
+    // sign hands an equal-cost tie to the wrong path in FloydWarshallGraph#build. 46 of the 110
+    // ordered pairs of Gluten transition node names invert this way.
+    val comparator = costModel.costComparator()
+    val higherHash = costOf(plan => RowToVeloxColumnar(plan))
+    val lowerHash = costOf(plan => CHColumnarToCarrierRow(plan))
 
     assert("RowToVeloxColumnar".hashCode - "CHColumnarToCarrierRow".hashCode < 0)
     assert(comparator.compare(higherHash, lowerHash) > 0)
@@ -44,38 +44,44 @@ class TransitionCostModelSuite extends AnyFunSuite {
   }
 
   test("costComparator prefers the cheaper cost before consulting node names") {
-    val comparator = TransitionGraph.asTransitionCostModel(TestCostModel).costComparator()
-    val cheap = TransitionGraph.transitionCostForTesting(TestCostModel.costOf(Leaf()), Seq("zzzz"))
-    val expensive =
-      TransitionGraph.transitionCostForTesting(TestCostModel.costOf(Unary(Leaf())), Seq("AAAA"))
+    // Aaaa sorts and hashes below Zzzz, so a comparator that ignored the base cost would order
+    // these the other way around.
+    val comparator = costModel.costComparator()
+    val cheap = costOf(plan => Zzzz(plan))
+    val expensive = costOf(plan => Aaaa(Aaaa(plan)))
     assert(comparator.compare(cheap, expensive) < 0)
     assert(comparator.compare(expensive, cheap) > 0)
   }
 
-  test("costComparator treats identical node name sequences as equal") {
-    val comparator = TransitionGraph.asTransitionCostModel(TestCostModel).costComparator()
-    val names = Seq("LoadArrowData", "ColumnarToRow")
-    assert(comparator.compare(costOf(names), costOf(names)) == 0)
+  test("costComparator treats the same transition as equal to itself") {
+    val comparator = costModel.costComparator()
+    assert(comparator.compare(costOf(plan => Zzzz(plan)), costOf(plan => Zzzz(plan))) == 0)
   }
 }
 
 object TransitionCostModelSuite {
-  private def costOf(nodeNames: Seq[String]): FloydWarshallGraph.Cost =
-    TransitionGraph.transitionCostForTesting(TestCostModel.makeZeroCost(), nodeNames)
+  private def costModel: FloydWarshallGraph.CostModel[Transition] =
+    TransitionGraph.asTransitionCostModel(TestCostModel)
+
+  /** The cost of a transition, whose node names are those of the nodes it wraps the input in. */
+  private def costOf(f: SparkPlan => SparkPlan): FloydWarshallGraph.Cost =
+    costModel.costOf((plan: SparkPlan) => f(plan))
 
   /** Charges one per node, so a deeper plan costs more. */
   private object TestCostModel extends LongCostModel {
     override def selfLongCostOf(node: SparkPlan): Long = 1L
   }
 
-  private case class Leaf() extends LeafExecNode {
-    override protected def doExecute(): RDD[InternalRow] = throw new UnsupportedOperationException()
-    override def output: Seq[Attribute] = Nil
-  }
+  /** Node names below are the class names: Spark only strips a trailing "Exec". */
+  private case class RowToVeloxColumnar(child: SparkPlan) extends Wrapper
+  private case class CHColumnarToCarrierRow(child: SparkPlan) extends Wrapper
+  private case class Zzzz(child: SparkPlan) extends Wrapper
+  private case class Aaaa(child: SparkPlan) extends Wrapper
 
-  private case class Unary(child: SparkPlan) extends UnaryExecNode {
+  private trait Wrapper extends UnaryExecNode {
     override protected def doExecute(): RDD[InternalRow] = throw new UnsupportedOperationException()
     override def output: Seq[Attribute] = Nil
-    override protected def withNewChildInternal(newChild: SparkPlan): Unary = copy(newChild)
+    override protected def withNewChildInternal(newChild: SparkPlan): SparkPlan =
+      throw new UnsupportedOperationException()
   }
 }

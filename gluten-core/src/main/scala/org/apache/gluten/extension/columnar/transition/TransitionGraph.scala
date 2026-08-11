@@ -59,12 +59,6 @@ object TransitionGraph {
     new TransitionCostModel(base)
   }
 
-  private[transition] def transitionCostForTesting(
-      value: GlutenCost,
-      nodeNames: Seq[String]): FloydWarshallGraph.Cost = {
-    TransitionCost(value, nodeNames)
-  }
-
   implicit class TransitionGraphOps(val graph: TransitionGraph) {
     import TransitionGraphOps._
     def hasTransition(from: TransitionGraph.Vertex, to: TransitionGraph.Vertex): Boolean = {
