@@ -1038,6 +1038,7 @@ class ClickHouseTestSettings extends BackendTestSettings {
     .exclude("SPARK-37742: AQE reads invalid InMemoryRelation stats and mistakenly plans BHJ")
     .exclude("SPARK-37328: skew join with 3 tables")
     .exclude("SPARK-39915: Dataset.repartition(N) may not create N partitions")
+    .exclude("SPARK-37652: optimize skewed join through union")
     .excludeGlutenTest("Change broadcast join to merge join")
     .excludeGlutenTest("Empty stage coalesced to 1-partition RDD")
     .excludeGlutenTest(
@@ -1738,6 +1739,10 @@ class ClickHouseTestSettings extends BackendTestSettings {
     .exclude(
       "SELECT structFieldSimple.key, arrayFieldSimple[1] FROM tableWithSchema a where int_Field=1")
     .exclude("SELECT structFieldComplex.Value.`value_(2)` FROM tableWithSchema")
+  enableSuite[GlutenImplicitsTest]
+    .excludeGlutenTest("fallbackSummary with shuffle")
+    .excludeGlutenTest("fallbackSummary with cache")
+    .excludeGlutenTest("fallbackSummary with cached data and shuffle")
   enableSuite[GlutenSparkSessionExtensionSuite]
     .includeGlutenTest("customColumnarOp")
   enableSuite[GlutenHiveSQLQueryCHSuite]

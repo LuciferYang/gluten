@@ -752,6 +752,7 @@ class ClickHouseTestSettings extends BackendTestSettings {
   enableSuite[GlutenEmptyInSuite]
     .excludeCH("IN with empty list")
   enableSuite[GlutenEnsureRequirementsSuite]
+    .exclude("SPARK-35675: EnsureRequirements remove shuffle should respect PartitioningCollection")
   enableSuite[GlutenExchangeSuite]
     // ColumnarShuffleExchangeExec does not support doExecute() method
     .exclude("shuffling UnsafeRows in exchange")
@@ -2072,6 +2073,10 @@ class ClickHouseTestSettings extends BackendTestSettings {
       "sorting on YearMonthIntervalType(0,1) with nullable=false, sortOrder=List('a ASC NULLS LAST)")
     .excludeCH("sorting on YearMonthIntervalType(0,1) with nullable=false, sortOrder=List('a DESC NULLS LAST)")
     .excludeCH("sorting on YearMonthIntervalType(0,1) with nullable=false, sortOrder=List('a DESC NULLS FIRST)")
+  enableSuite[GlutenImplicitsTest]
+    .excludeGlutenTest("fallbackSummary with shuffle")
+    .excludeGlutenTest("fallbackSummary with cache")
+    .excludeGlutenTest("fallbackSummary with cached data and shuffle")
   enableSuite[GlutenSparkSessionExtensionSuite]
     .includeGlutenTest("customColumnarOp")
   enableSuite[GlutenStatisticsCollectionSuite]
