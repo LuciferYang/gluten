@@ -21,20 +21,34 @@ import org.apache.gluten.utils.BackendTestUtils
 
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.execution.GlutenImplicits._
-import org.apache.spark.sql.internal.{SQLConf, StaticSQLConf}
+import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.test.SharedSparkSession
+import org.apache.spark.util.Utils
 
 class GlutenImplicitsTest extends GlutenQueryTest with SharedSparkSession {
-  sys.props.put(GlutenConfig.COLUMNAR_TABLE_CACHE_ENABLED.key, "true")
+
+  // Keep the warehouse under target/ so that `mvn clean` removes it. Left to itself,
+  // SharedSparkSession resolves StaticSQLConf.WAREHOUSE_PATH against the fork's working
+  // directory, which is the module basedir, and a run interrupted between beforeAll and afterAll
+  // would leave t1 behind in a place no build step cleans up. Appending the class name keeps
+  // this suite's warehouse separate from the other suites in this module. The path mirrors what
+  // GlutenTestsBaseTrait hands to the per-version suites, inlined rather than inherited because
+  // mixing that trait in would route every case through BackendTestSettings, where this suite is
+  // no longer registered.
+  private val warehouse: String =
+    getClass.getResource("/").getPath + "unit-tests-working-home/spark-warehouse/" +
+      getClass.getCanonicalName
 
   override protected def sparkConf: SparkConf = {
     // Reuse the session conf every other Gluten SQL suite runs with, since the node counts
-    // asserted below depend on it. SharedSparkSession already points the warehouse at a
-    // per-class temp dir, so hand that path back to nativeSparkConf rather than inventing one.
-    val conf = super.sparkConf
+    // asserted below depend on it.
     GlutenSQLTestsBaseTrait
-      .nativeSparkConf(conf, conf.get(StaticSQLConf.WAREHOUSE_PATH))
+      .nativeSparkConf(super.sparkConf, warehouse)
       .set("spark.sql.shuffle.partitions", "5")
+      // Three cases below assert node counts for a cached relation, which needs the table cache
+      // offloaded. That is the default, but set it explicitly so the expectations do not change
+      // silently if the default ever flips.
+      .set(GlutenConfig.COLUMNAR_TABLE_CACHE_ENABLED.key, "true")
   }
 
   override protected def beforeAll(): Unit = {
@@ -48,8 +62,16 @@ class GlutenImplicitsTest extends GlutenQueryTest with SharedSparkSession {
   }
 
   override protected def afterAll(): Unit = {
-    spark.sql("drop table t1")
-    super.afterAll()
+    // super.afterAll() stops the session, so it has to run even if the drop fails: this module
+    // runs every suite in one fork, and a leaked SparkContext would take the later suites with
+    // it. tryWithSafeFinally rather than a bare finally, because both halves throw for the same
+    // reason (a stopped SparkContext fails the drop and catalog.reset() alike) and a bare finally
+    // would replace the original exception with the one from super.afterAll().
+    Utils.tryWithSafeFinally {
+      spark.sql("DROP TABLE IF EXISTS t1")
+    } {
+      super.afterAll()
+    }
   }
 
   override protected def afterEach(): Unit = {
@@ -74,6 +96,12 @@ class GlutenImplicitsTest extends GlutenQueryTest with SharedSparkSession {
     }
   }
 
+  // ClickHouse reports different Gluten node counts for the cases that involve a shuffle or a
+  // cached relation. spark33's ClickHouseTestSettings excluded exactly these three without
+  // recording what CH actually reports, so they stay Velox-only until someone reads the real
+  // counts off a ClickHouse run. Follows GlutenCheckOverflowTransformerSuite in this module.
+  private def assumeVeloxOnly(): Unit = assume(BackendTestUtils.isVeloxBackendLoaded())
+
   test("fallbackSummary with query") {
     withAQEEnabledAndDisabled {
       val df = spark.table("t1").filter(_.getLong(0) > 0)
@@ -86,10 +114,7 @@ class GlutenImplicitsTest extends GlutenQueryTest with SharedSparkSession {
   }
 
   test("fallbackSummary with shuffle") {
-    // ClickHouse reports a different number of Gluten nodes here. The spark33
-    // ClickHouseTestSettings excluded this case without recording what CH actually reports, so
-    // keep it Velox-only until someone reads the real counts off a ClickHouse run.
-    assume(BackendTestUtils.isVeloxBackendLoaded())
+    assumeVeloxOnly()
     withAQEEnabledAndDisabled {
       val df = spark.sql("SELECT c2 FROM t1 group by c2").filter(_.getLong(0) > 0)
       assert(df.fallbackSummary().numGlutenNodes == 6, df.fallbackSummary())
@@ -123,8 +148,7 @@ class GlutenImplicitsTest extends GlutenQueryTest with SharedSparkSession {
   }
 
   test("fallbackSummary with cache") {
-    // Velox only, for the same reason as `fallbackSummary with shuffle`.
-    assume(BackendTestUtils.isVeloxBackendLoaded())
+    assumeVeloxOnly()
     withAQEEnabledAndDisabled {
       val df = spark.table("t1").cache().filter(_.getLong(0) > 0)
       assert(df.fallbackSummary().numGlutenNodes == 2, df.fallbackSummary())
@@ -136,8 +160,7 @@ class GlutenImplicitsTest extends GlutenQueryTest with SharedSparkSession {
   }
 
   test("fallbackSummary with cached data and shuffle") {
-    // Velox only, for the same reason as `fallbackSummary with shuffle`.
-    assume(BackendTestUtils.isVeloxBackendLoaded())
+    assumeVeloxOnly()
     withAQEEnabledAndDisabled {
       val df = spark.sql("select * from t1").filter(_.getLong(0) > 0).cache.repartition()
       assert(df.fallbackSummary().numGlutenNodes == 7, df.fallbackSummary())
