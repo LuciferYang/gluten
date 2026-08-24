@@ -560,8 +560,6 @@ class VeloxTestSettings extends BackendTestSettings {
     // Rewrite to match SortExecTransformer.
     .excludeByPrefix("SPARK-41914:")
   enableSuite[GlutenEnsureRequirementsSuite]
-    // Rewrite to change the shuffle partitions for optimizing repartition
-    .excludeByPrefix("SPARK-35675")
 
   enableSuite[GlutenBroadcastJoinSuite]
     .exclude("Shouldn't change broadcast join buildSide if user clearly specified")

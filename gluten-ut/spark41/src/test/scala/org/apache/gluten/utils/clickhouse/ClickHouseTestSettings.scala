@@ -752,7 +752,6 @@ class ClickHouseTestSettings extends BackendTestSettings {
   enableSuite[GlutenEmptyInSuite]
     .excludeCH("IN with empty list")
   enableSuite[GlutenEnsureRequirementsSuite]
-    .exclude("SPARK-35675: EnsureRequirements remove shuffle should respect PartitioningCollection")
   enableSuite[GlutenExchangeSuite]
     // ColumnarShuffleExchangeExec does not support doExecute() method
     .exclude("shuffling UnsafeRows in exchange")
