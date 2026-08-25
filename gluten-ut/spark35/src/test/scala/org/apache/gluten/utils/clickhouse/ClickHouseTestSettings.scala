@@ -1180,7 +1180,6 @@ class ClickHouseTestSettings extends BackendTestSettings {
   enableSuite[GlutenMathExpressionsSuite]
     // Spark round UT for round(3.1415,3) is not correct.
     .exclude("round/bround/floor/ceil")
-    .excludeCH("tanh")
     .excludeCH("unhex")
     .excludeCH("atan2")
     .excludeCH("SPARK-42045: integer overflow in round/bround")
