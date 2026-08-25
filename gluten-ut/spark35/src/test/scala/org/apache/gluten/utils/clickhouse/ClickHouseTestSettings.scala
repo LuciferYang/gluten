@@ -375,7 +375,7 @@ class ClickHouseTestSettings extends BackendTestSettings {
     .excludeCH("SPARK-35111: Cast string to year-month interval")
     .excludeCH("Gluten - data type casting")
     // The Gluten rewrite of "cast from timestamp II" is not vetted on ClickHouse;
-    // the vanilla case is excluded further down in this block.
+    // the vanilla case is excluded separately in this block.
     .excludeCH("Gluten - cast from timestamp II")
     .exclude("cast string to date #2")
     .exclude("casting to fixed-precision decimals")

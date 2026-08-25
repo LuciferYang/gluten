@@ -100,7 +100,8 @@ class VeloxTestSettings extends BackendTestSettings {
     .exclude("data type casting")
     // Revised by setting timezone through config and commented unsupported cases.
     .exclude("cast string to timestamp")
-    // Rewritten in GlutenCastSuite without Long.MinValue, which overflows on the collect path.
+    // Excluded in favour of the GlutenCastSuite rewrite, which drops the Long.MinValue
+    // assertion: collect() -> toJavaTimestamp -> rebaseGregorianToJulianMicros overflows.
     .exclude("cast from timestamp II")
     .exclude("SPARK-36286: invalid string cast to timestamp")
     .exclude("SPARK-39749: cast Decimal to string")
