@@ -376,7 +376,7 @@ class ClickHouseTestSettings extends BackendTestSettings {
     .excludeCH("Gluten - data type casting")
     // The Gluten rewrite of "cast from timestamp II" is not vetted on ClickHouse;
     // the vanilla case is excluded separately in this block.
-    .excludeCH("Gluten - cast from timestamp II")
+    .excludeGlutenTest("cast from timestamp II")
     .exclude("cast string to date #2")
     .exclude("casting to fixed-precision decimals")
     .exclude("SPARK-28470: Cast should honor nullOnOverflow property")
