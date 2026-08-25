@@ -1180,6 +1180,9 @@ class ClickHouseTestSettings extends BackendTestSettings {
   enableSuite[GlutenMathExpressionsSuite]
     // Spark round UT for round(3.1415,3) is not correct.
     .exclude("round/bround/floor/ceil")
+    // ClickHouse's tanh differs from Spark's at the sixth significant digit:
+    // TANH(-0.1) returns -0.0996695958408681, the case expects -0.09966799462495582.
+    .excludeCH("tanh")
     .excludeCH("unhex")
     .excludeCH("atan2")
     .excludeCH("SPARK-42045: integer overflow in round/bround")
@@ -2194,6 +2197,15 @@ class ClickHouseTestSettings extends BackendTestSettings {
     .excludeCH("cast from timestamp II")
     .excludeCH("cast a timestamp before the epoch 1970-01-01 00:00:00Z II")
     .excludeCH("cast a timestamp before the epoch 1970-01-01 00:00:00Z")
+    // ClickHouse throws instead of yielding null: try_cast([123,true,f] as
+    // array<boolean>) fails with an exception.
+    .excludeCH("cast from array II")
+    // TRY-mode overflow inside a complex type wraps instead of yielding null on
+    // ClickHouse: try_cast([2.147483648E9] as array<int>) returns [-2147483648].
+    .excludeCH("cast from array III")
+    // Same as "cast from array III": try_cast([2.147483648E9] as struct<a:int>)
+    // returns [-2147483648] on ClickHouse.
+    .excludeCH("cast from struct III")
     .excludeCH("ANSI mode: cast string to timestamp with parse error")
     .excludeCH("ANSI mode: cast string to date with parse error")
     .excludeCH("Gluten - data type casting")
