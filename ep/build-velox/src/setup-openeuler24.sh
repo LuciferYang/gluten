@@ -83,7 +83,7 @@ function install_velox_deps_from_dnf {
 function install_gflags {
   # Remove an older version if present.
   dnf remove -y gflags
-  wget_and_untar https://github.com/gflags/gflags/archive/v2.2.2.tar.gz gflags
+  wget_and_untar https://github.com/gflags/gflags/archive/v2.3.0.tar.gz gflags
   cmake_install_dir gflags -DBUILD_SHARED_LIBS=ON -DBUILD_STATIC_LIBS=ON -DBUILD_gflags_LIB=ON -DLIB_SUFFIX=64
 }
 
@@ -229,6 +229,34 @@ function install_velox_deps {
   run_and_time install_grpc
   run_and_time install_duckdb
   run_and_time install_geos
+}
+
+function install_s3 {
+  install_aws_deps
+  local MINIO_OS="linux"
+  install_minio ${MINIO_OS}
+}
+
+function install_gcs {
+  dnf -y install npm curl-devel c-ares-devel re2-devel
+  install_gcs_sdk_cpp
+}
+
+function install_abfs {
+  dnf -y install perl-IPC-Cmd openssl-devel libxml2-devel
+  install_azure_storage_sdk_cpp
+}
+
+function install_hdfs {
+  dnf -y install libxml2-devel libgsasl-devel libuuid-devel krb5-devel java-1.8.0-openjdk-devel
+  install_hdfs_deps
+}
+
+function install_adapters {
+  run_and_time install_s3
+  run_and_time install_gcs
+  run_and_time install_abfs
+  run_and_time install_hdfs
 }
 
 (return 2> /dev/null) && return # If script was sourced, don't run commands.

@@ -18,15 +18,13 @@
 #pragma once
 
 #include "substrait/algebra.pb.h"
-#include "substrait/capabilities.pb.h"
 #include "substrait/extensions/extensions.pb.h"
-#include "substrait/function.pb.h"
-#include "substrait/parameterized_types.pb.h"
 #include "substrait/plan.pb.h"
 #include "substrait/type.pb.h"
-#include "substrait/type_expressions.pb.h"
 
 #include <google/protobuf/wrappers.pb.h>
+
+#include <optional>
 
 #include "velox/connectors/hive/TableHandle.h"
 #include "velox/type/Type.h"
@@ -106,6 +104,12 @@ class SubstraitParser {
   // Get values for the different supported types.
   template <typename T>
   static T getLiteralValue(const ::substrait::Expression::Literal& /* literal */);
+
+  /// Extract a row count that Substrait models as an Expression, e.g. TopNRel::count. Velox row
+  /// counts are positive int32 values, so std::nullopt is returned when the expression is unset,
+  /// null, not an i64 literal, or out of the int32 range. Callers are expected to reject the plan
+  /// in that case rather than silently substituting a count.
+  static std::optional<int32_t> getRowCount(const ::substrait::Expression& expression);
 
  private:
   /// A map used for mapping Substrait function keywords into Velox functions'
