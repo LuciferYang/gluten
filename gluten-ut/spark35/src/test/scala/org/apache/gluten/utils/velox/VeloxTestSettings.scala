@@ -596,9 +596,8 @@ class VeloxTestSettings extends BackendTestSettings {
   enableSuite[GlutenInsertSuite]
     // the native write staing dir is differnt with vanilla Spark for coustom partition paths
     .exclude("SPARK-35106: Throw exception when rename custom partition paths returns false")
-    // Gluten surfaces the raw FileAlreadyExistsException instead of the SparkException
-    // the case expects, because the native write does not go through the task-failure
-    // wrapping in Spark's FileFormatWriter.
+    // The case expects a SparkException; Gluten surfaces the raw
+    // FileAlreadyExistsException instead. Reproduced on Spark 3.4.4.
     .exclude("Stop task set if FileAlreadyExistsException was thrown")
     // Rewrite: Additional support for file scan with default values has been added in Spark-3.4.
     // It appends the default value in record if it is not present while scanning.

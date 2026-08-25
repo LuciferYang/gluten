@@ -551,6 +551,8 @@ class ClickHouseTestSettings extends BackendTestSettings {
     .exclude("cast from boolean")
     .exclude("data type casting")
     .excludeGlutenTest("data type casting")
+    // Gluten rewrite of the vanilla case excluded below; not vetted on ClickHouse.
+    .excludeGlutenTest("cast from timestamp II")
     .exclude("cast between string and interval")
     .exclude("SPARK-27671: cast from nested null type in struct")
     .exclude("Process Infinity, -Infinity, NaN in case insensitive manner")

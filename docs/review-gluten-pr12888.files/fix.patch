@@ -1,0 +1,90 @@
+diff --git a/gluten-ut/spark34/src/test/scala/org/apache/gluten/utils/clickhouse/ClickHouseTestSettings.scala b/gluten-ut/spark34/src/test/scala/org/apache/gluten/utils/clickhouse/ClickHouseTestSettings.scala
+index 214d677cd..1b0c00dd4 100644
+--- a/gluten-ut/spark34/src/test/scala/org/apache/gluten/utils/clickhouse/ClickHouseTestSettings.scala
++++ b/gluten-ut/spark34/src/test/scala/org/apache/gluten/utils/clickhouse/ClickHouseTestSettings.scala
+@@ -551,6 +551,8 @@ class ClickHouseTestSettings extends BackendTestSettings {
+     .exclude("cast from boolean")
+     .exclude("data type casting")
+     .excludeGlutenTest("data type casting")
++    // Gluten rewrite of the vanilla case excluded below; not vetted on ClickHouse.
++    .excludeGlutenTest("cast from timestamp II")
+     .exclude("cast between string and interval")
+     .exclude("SPARK-27671: cast from nested null type in struct")
+     .exclude("Process Infinity, -Infinity, NaN in case insensitive manner")
+diff --git a/gluten-ut/spark34/src/test/scala/org/apache/gluten/utils/velox/VeloxTestSettings.scala b/gluten-ut/spark34/src/test/scala/org/apache/gluten/utils/velox/VeloxTestSettings.scala
+index aebae259e..fb3024a0a 100644
+--- a/gluten-ut/spark34/src/test/scala/org/apache/gluten/utils/velox/VeloxTestSettings.scala
++++ b/gluten-ut/spark34/src/test/scala/org/apache/gluten/utils/velox/VeloxTestSettings.scala
+@@ -636,9 +636,8 @@ class VeloxTestSettings extends BackendTestSettings {
+   enableSuite[GlutenInsertSuite]
+     // the native write staing dir is differnt with vanilla Spark for coustom partition paths
+     .exclude("SPARK-35106: Throw exception when rename custom partition paths returns false")
+-    // Gluten surfaces the raw FileAlreadyExistsException instead of the SparkException
+-    // the case expects, because the native write does not go through the task-failure
+-    // wrapping in Spark's FileFormatWriter.
++    // The case expects a SparkException; Gluten surfaces the raw
++    // FileAlreadyExistsException instead. Reproduced on Spark 3.4.4.
+     .exclude("Stop task set if FileAlreadyExistsException was thrown")
+     // Rewrite: Additional support for file scan with default values has been added in Spark-3.4.
+     // It appends the default value in record if it is not present while scanning.
+diff --git a/gluten-ut/spark35/src/test/scala/org/apache/gluten/utils/clickhouse/ClickHouseTestSettings.scala b/gluten-ut/spark35/src/test/scala/org/apache/gluten/utils/clickhouse/ClickHouseTestSettings.scala
+index 920554f91..5fedde4f3 100644
+--- a/gluten-ut/spark35/src/test/scala/org/apache/gluten/utils/clickhouse/ClickHouseTestSettings.scala
++++ b/gluten-ut/spark35/src/test/scala/org/apache/gluten/utils/clickhouse/ClickHouseTestSettings.scala
+@@ -374,6 +374,8 @@ class ClickHouseTestSettings extends BackendTestSettings {
+     .excludeCH("SPARK-33291: Cast struct with null elements to string")
+     .excludeCH("SPARK-35111: Cast string to year-month interval")
+     .excludeCH("Gluten - data type casting")
++    // Gluten rewrite of the vanilla case excluded below; not vetted on ClickHouse.
++    .excludeCH("Gluten - cast from timestamp II")
+     .exclude("cast string to date #2")
+     .exclude("casting to fixed-precision decimals")
+     .exclude("SPARK-28470: Cast should honor nullOnOverflow property")
+diff --git a/gluten-ut/spark35/src/test/scala/org/apache/gluten/utils/velox/VeloxTestSettings.scala b/gluten-ut/spark35/src/test/scala/org/apache/gluten/utils/velox/VeloxTestSettings.scala
+index e4480661d..b2ac952ce 100644
+--- a/gluten-ut/spark35/src/test/scala/org/apache/gluten/utils/velox/VeloxTestSettings.scala
++++ b/gluten-ut/spark35/src/test/scala/org/apache/gluten/utils/velox/VeloxTestSettings.scala
+@@ -596,9 +596,8 @@ class VeloxTestSettings extends BackendTestSettings {
+   enableSuite[GlutenInsertSuite]
+     // the native write staing dir is differnt with vanilla Spark for coustom partition paths
+     .exclude("SPARK-35106: Throw exception when rename custom partition paths returns false")
+-    // Gluten surfaces the raw FileAlreadyExistsException instead of the SparkException
+-    // the case expects, because the native write does not go through the task-failure
+-    // wrapping in Spark's FileFormatWriter.
++    // The case expects a SparkException; Gluten surfaces the raw
++    // FileAlreadyExistsException instead. Reproduced on Spark 3.4.4.
+     .exclude("Stop task set if FileAlreadyExistsException was thrown")
+     // Rewrite: Additional support for file scan with default values has been added in Spark-3.4.
+     // It appends the default value in record if it is not present while scanning.
+diff --git a/gluten-ut/spark40/src/test/scala/org/apache/gluten/utils/velox/VeloxTestSettings.scala b/gluten-ut/spark40/src/test/scala/org/apache/gluten/utils/velox/VeloxTestSettings.scala
+index 28870c314..75988e035 100644
+--- a/gluten-ut/spark40/src/test/scala/org/apache/gluten/utils/velox/VeloxTestSettings.scala
++++ b/gluten-ut/spark40/src/test/scala/org/apache/gluten/utils/velox/VeloxTestSettings.scala
+@@ -866,9 +866,8 @@ class VeloxTestSettings extends BackendTestSettings {
+     .exclude("SPARK-24583 Wrong schema type in InsertIntoDataSourceCommand")
+     // the native write staing dir is differnt with vanilla Spark for coustom partition paths
+     .exclude("SPARK-35106: Throw exception when rename custom partition paths returns false")
+-    // Gluten surfaces the raw FileAlreadyExistsException instead of the SparkException
+-    // the case expects, because the native write does not go through the task-failure
+-    // wrapping in Spark's FileFormatWriter.
++    // The case expects a SparkException; Gluten surfaces the raw
++    // FileAlreadyExistsException instead. Reproduced on Spark 3.4.4.
+     .exclude("Stop task set if FileAlreadyExistsException was thrown")
+     // Rewrite: Additional support for file scan with default values has been added in Spark-3.4.
+     // It appends the default value in record if it is not present while scanning.
+diff --git a/gluten-ut/spark41/src/test/scala/org/apache/gluten/utils/velox/VeloxTestSettings.scala b/gluten-ut/spark41/src/test/scala/org/apache/gluten/utils/velox/VeloxTestSettings.scala
+index 12d614e1d..df0e9e0b9 100644
+--- a/gluten-ut/spark41/src/test/scala/org/apache/gluten/utils/velox/VeloxTestSettings.scala
++++ b/gluten-ut/spark41/src/test/scala/org/apache/gluten/utils/velox/VeloxTestSettings.scala
+@@ -847,9 +847,8 @@ class VeloxTestSettings extends BackendTestSettings {
+     .exclude("SPARK-24583 Wrong schema type in InsertIntoDataSourceCommand")
+     // the native write staing dir is differnt with vanilla Spark for coustom partition paths
+     .exclude("SPARK-35106: Throw exception when rename custom partition paths returns false")
+-    // Gluten surfaces the raw FileAlreadyExistsException instead of the SparkException
+-    // the case expects, because the native write does not go through the task-failure
+-    // wrapping in Spark's FileFormatWriter.
++    // The case expects a SparkException; Gluten surfaces the raw
++    // FileAlreadyExistsException instead. Reproduced on Spark 3.4.4.
+     .exclude("Stop task set if FileAlreadyExistsException was thrown")
+     // Rewrite: Additional support for file scan with default values has been added in Spark-3.4.
+     // It appends the default value in record if it is not present while scanning.

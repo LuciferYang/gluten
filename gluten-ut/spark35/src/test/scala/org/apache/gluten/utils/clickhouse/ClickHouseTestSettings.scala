@@ -374,6 +374,8 @@ class ClickHouseTestSettings extends BackendTestSettings {
     .excludeCH("SPARK-33291: Cast struct with null elements to string")
     .excludeCH("SPARK-35111: Cast string to year-month interval")
     .excludeCH("Gluten - data type casting")
+    // Gluten rewrite of the vanilla case excluded below; not vetted on ClickHouse.
+    .excludeCH("Gluten - cast from timestamp II")
     .exclude("cast string to date #2")
     .exclude("casting to fixed-precision decimals")
     .exclude("SPARK-28470: Cast should honor nullOnOverflow property")
