@@ -185,7 +185,7 @@ jobs:
     # provide one, and the `paths:` filter already decided whether the run happens.
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ env.DELTA_CHECKOUT_REF }}
       - name: Get Ccache from Apache Stash
@@ -226,11 +226,11 @@ jobs:
     runs-on: ubuntu-22.04
     container: apache/gluten:centos-9-jdk17
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ env.DELTA_CHECKOUT_REF }}
       - name: Download native artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: delta-spark-ut-native-lib-centos-7-${{ github.sha }}
           path: ./cpp/build/
@@ -321,7 +321,7 @@ jobs:
       # TestParallelization.scala.
       SHARD_ID: ${{ matrix.shard }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ env.DELTA_CHECKOUT_REF }}
 
@@ -356,7 +356,7 @@ jobs:
           } | tee -a "$GITHUB_OUTPUT"
 
       - name: Download Gluten bundle jar
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: delta-spark-ut-gluten-bundle-${{github.sha}}
           path: gluten-bundle
@@ -519,11 +519,11 @@ jobs:
     if: ${{ !cancelled() && needs.delta-spark-test.result != 'skipped' }}
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ env.DELTA_CHECKOUT_REF }}
       - name: Download per-shard gate lists
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         continue-on-error: true
         with:
           pattern: delta-spark-ut-gate-lists-shard-*
