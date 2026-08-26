@@ -56,10 +56,6 @@ RUN set -ex; \
         -Piceberg,iceberg-test,delta,paimon \
         dependency:go-offline -DskipTests || true; \
 
-    # Spark 3.3
-    $MVN_CMD -Pjava-17,spark-3.3,backends-velox,hadoop-3.3,spark-ut \
-        -Piceberg,delta,paimon \
-        dependency:go-offline -DskipTests || true
 
 WORKDIR /work
 

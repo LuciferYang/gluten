@@ -34,13 +34,6 @@ else
   exit 1
 fi
 
-# Build Gluten for Spark 3.3 with Java 8. All feature modules are enabled.
-for spark_version in 3.3
-do
-  ${GLUTEN_HOME}/build/mvn clean install -Pbackends-velox -Pspark-${spark_version} -Pceleborn,uniffle \
-                    -Piceberg,delta,hudi,paimon -DskipTests
-done
-
 sudo curl -Lo /etc/yum.repos.d/corretto.repo https://yum.corretto.aws/corretto.repo
 sudo yum install -y java-17-amazon-corretto-devel
 export JAVA_HOME=/usr/lib/jvm/java-17-amazon-corretto
