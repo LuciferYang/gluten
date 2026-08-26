@@ -84,7 +84,7 @@ An explicit `export NUM_THREADS=<n>` still wins. VS Code tasks do not read
 ## Run the tests
 
 The image unpacks a Spark distribution for every supported version under `/opt/shims`,
-which is what `spark.test.home` needs. CI runs the Spark 3.4/3.5 unit tests on
+which is what `spark.test.home` needs. CI runs the Spark 3.4/3.5/4.0/4.1 unit tests on
 JDK 17:
 
 ```bash

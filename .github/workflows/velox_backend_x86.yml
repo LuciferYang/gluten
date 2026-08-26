@@ -64,8 +64,8 @@ concurrency:
 
 jobs:
   # Detect which parts of the codebase were modified so downstream jobs can
-  # skip work that is irrelevant to the change (e.g. a Spark-3.3-shim-only change does
-  # not need to run spark-test-spark34/35/40/41; C++ changes still run spark-test-*
+  # skip work that is irrelevant to the change (e.g. a Spark-3.4-shim-only change does
+  # not need to run spark-test-spark35/40/41; C++ changes still run spark-test-*
   # jobs to validate JNI/native integration).
   #
   # Output flags:
@@ -754,7 +754,7 @@ jobs:
           bash -c "echo -e 'CELEBORN_MASTER_MEMORY=8g\nCELEBORN_WORKER_MEMORY=8g\nCELEBORN_WORKER_OFFHEAP_MEMORY=16g' > ./conf/celeborn-env.sh" && \
           bash -c "echo -e 'celeborn.worker.commitFiles.threads 32\nceleborn.worker.sortPartition.threads 16' > ./conf/celeborn-defaults.conf" && \
           bash ./sbin/start-master.sh && bash ./sbin/start-worker.sh && \
-          cd $GITHUB_WORKSPACE/tools/gluten-it && $GITHUB_WORKSPACE/$MVN_CMD clean install -Pspark-3.5 -Pceleborn ${EXTRA_PROFILE} && \
+          cd $GITHUB_WORKSPACE/tools/gluten-it && $GITHUB_WORKSPACE/$MVN_CMD clean install -P${{ matrix.spark }} -Pceleborn ${EXTRA_PROFILE} && \
           GLUTEN_IT_JVM_ARGS=-Xmx16G sbin/gluten-it.sh queries-compare \
             --extra-conf=spark.celeborn.client.spark.shuffle.writer=${{ matrix.writer }} \
             --extra-conf=spark.sql.shuffle.partitions=16 \

@@ -31,7 +31,7 @@ parent: /developer-overview/
    ![gluten-debug-idea-config.png](../image/ClickHouse/gluten-debug-idea-config.png)
 
    VM Options: 
-   `-Dgluten.test.data.path=/data -Dspark.gluten.sql.columnar.libpath=/path/to/gluten/cpp-ch/build/utils/extern-local-engine/libch.so -Dspark.test.home=/path/to/spark33`
+   `-Dgluten.test.data.path=/data -Dspark.gluten.sql.columnar.libpath=/path/to/gluten/cpp-ch/build/utils/extern-local-engine/libch.so -Dspark.test.home=/tmp/spark35`
    > Download tpcds-data in https://gluten-nginx.kyligence.com/dataset/
    > Download spark35 using `git clone --depth 1 --branch v3.5.5 https://github.com/apache/spark.git /tmp/spark35`
    
