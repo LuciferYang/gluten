@@ -48,7 +48,7 @@ You can also refer to [How-to-Build-ClickHouse-on-Linux](https://clickhouse.com/
 You need to install the following software manually:
 - Java 8
 - Maven 3.6.3 or higher version
-- Spark 3.3.1 or higher version
+- Spark 3.4.4 or higher version
 
 Then, get Gluten code:
 ```shell
@@ -173,14 +173,14 @@ The result is in `$clickhouse_root/build/utils/extern-local-engine/libch.so`.
 
 The prerequisites are the same as the one mentioned above. Compile Gluten with ClickHouse backend through maven:
 
-- for Spark 3.3.1
+- for Spark 3.5.5
 
 ```
     git clone https://github.com/apache/gluten.git
     cd gluten/
     export MAVEN_OPTS="-Xmx8g -XX:ReservedCodeCacheSize=2g"
-    mvn clean install -Pbackends-clickhouse -Phadoop-2.7.4 -Pspark-3.3 -Dhadoop.version=2.8.5 -DskipTests -Dcheckstyle.skip
-    ls -al backends-clickhouse/target/gluten-XXXXX-spark-3.3-jar-with-dependencies.jar
+    mvn clean install -Pbackends-clickhouse -Phadoop-2.7.4 -Pspark-3.5 -Dhadoop.version=2.8.5 -DskipTests -Dcheckstyle.skip
+    ls -al backends-clickhouse/target/gluten-XXXXX-spark-3.5-jar-with-dependencies.jar
 ```
 
 ### Gluten in local Spark Thrift Server
@@ -188,15 +188,15 @@ The prerequisites are the same as the one mentioned above. Compile Gluten with C
 #### Prepare working directory 
 
 
-- for Spark 3.3.1
+- for Spark 3.5.5
 
 ```
-tar zxf spark-3.3.1-bin-hadoop2.7.tgz
-cd spark-3.3.1-bin-hadoop2.7
+tar zxf spark-3.5.5-bin-hadoop3.tgz
+cd spark-3.5.5-bin-hadoop3
 #download delta-core_2.12-2.2.0.jar and delta-storage-2.2.0.jar
 wget https://repo1.maven.org/maven2/io/delta/delta-core_2.12/2.2.0/delta-core_2.12-2.2.0.jar -P ./jars
 wget https://repo1.maven.org/maven2/io/delta/delta-storage/2.2.0/delta-storage-2.2.0.jar -P ./jars
-cp gluten-XXXXX-spark-3.3-jar-with-dependencies.jar jars/
+cp gluten-XXXXX-spark-3.5-jar-with-dependencies.jar jars/
 ```
 
 #### Query local data
@@ -661,7 +661,7 @@ First refer to this URL(https://github.com/apache/celeborn) to setup a celeborn 
 When compiling the Gluten Java module, it's required to enable `celeborn` profile, as follows:
 
 ```
-mvn clean package -Pbackends-clickhouse -Pspark-3.3 -Pceleborn -DskipTests
+mvn clean package -Pbackends-clickhouse -Pspark-3.5 -Pceleborn -DskipTests
 ```
 
 Then add the Spark Celeborn Client packages to your Spark application's classpath(usually add them into `$SPARK_HOME/jars`).

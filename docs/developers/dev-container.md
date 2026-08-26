@@ -49,7 +49,7 @@ whenever the editor disconnects or a Codespace times out.
 | `--run_setup_script=OFF` | Velox's third-party libraries are already installed in the image; `ON` rebuilds them all from source into `/usr/local`. |
 | `--build_arrow=OFF` | Arrow is already installed under `/usr/local` and its jars are in `~/.m2`. |
 | `--build_tests=ON` | Also builds the C++ unit tests. Drop it if you only need the jars. |
-| `--spark_version=3.5` | The default, `ALL`, runs five full Maven builds (Spark 3.3 to 4.1). |
+| `--spark_version=3.5` | The default, `ALL`, runs four full Maven builds (Spark 3.4 to 4.1). |
 
 To rebuild only the native side after a C++ change:
 
@@ -84,7 +84,7 @@ An explicit `export NUM_THREADS=<n>` still wins. VS Code tasks do not read
 ## Run the tests
 
 The image unpacks a Spark distribution for every supported version under `/opt/shims`,
-which is what `spark.test.home` needs. CI runs the Spark 3.3/3.4/3.5 unit tests on
+which is what `spark.test.home` needs. CI runs the Spark 3.4/3.5 unit tests on
 JDK 17:
 
 ```bash
