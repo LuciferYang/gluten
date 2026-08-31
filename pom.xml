@@ -1909,7 +1909,7 @@
             <artifactId>build-helper-maven-plugin</artifactId>
             <executions>
               <execution>
-                <id>add-iceberg-test-sources</id>
+                <id>add-iceberg-spark-test-sources</id>
                 <goals>
                   <goal>add-test-source</goal>
                 </goals>
@@ -1922,7 +1922,7 @@
                 </configuration>
               </execution>
               <execution>
-                <id>add-iceberg-test-resources</id>
+                <id>add-iceberg-spark-test-resources</id>
                 <goals>
                   <goal>add-test-resource</goal>
                 </goals>
