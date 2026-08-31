@@ -384,6 +384,7 @@ Gluten with velox backend supports [Iceberg](https://iceberg.apache.org/) table.
 First, compile the gluten-iceberg module with the `iceberg` profile, as follows:
 
 ```
+# For spark3.5.x with Iceberg (requires JDK 11+; CI and the release build use JDK 17)
 mvn clean package -Pbackends-velox -Pspark-3.5 -Piceberg -DskipTests
 ```
 
