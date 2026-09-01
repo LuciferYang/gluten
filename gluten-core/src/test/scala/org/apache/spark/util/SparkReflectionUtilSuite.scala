@@ -16,30 +16,20 @@
  */
 package org.apache.spark.util
 
-object SparkReflectionUtil {
-  def getSimpleClassName(cls: Class[_]): String = {
-    Utils.getSimpleName(cls)
+import org.scalatest.funsuite.AnyFunSuite
+
+class SparkReflectionUtilSuite extends AnyFunSuite {
+
+  test("isClassPresent returns true for a loadable class") {
+    assert(SparkReflectionUtil.isClassPresent(classOf[String].getName))
   }
 
-  def classForName[C](
-      className: String,
-      initialize: Boolean = true,
-      noSparkClassLoader: Boolean = false): Class[C] = {
-    Utils.classForName(className, initialize, noSparkClassLoader)
-  }
-
-  def isClassPresent(className: String): Boolean = {
-    try {
-      classForName(className)
-      true
-    } catch {
-      case _: ClassNotFoundException =>
-        false
-      case _: LinkageError =>
-        // The class is present but cannot be linked, e.g. an optional
-        // dependency of a different version is missing a supertype; for the
-        // caller this is equivalent to "not present".
-        false
-    }
+  test("isClassPresent treats a failing static initializer as not present") {
+    // The probe initializes the class, so the failing static initializer
+    // surfaces as ExceptionInInitializerError (a LinkageError); a second
+    // probe of the same class surfaces NoClassDefFoundError. Both must read
+    // as "not present" instead of escaping the probe.
+    assert(!SparkReflectionUtil.isClassPresent(classOf[StaticInitThrower].getName))
+    assert(!SparkReflectionUtil.isClassPresent(classOf[StaticInitThrower].getName))
   }
 }
