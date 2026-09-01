@@ -33,8 +33,11 @@ class ShuffleManagerRegistry private[ShuffleManagerRegistry] {
   def register(lookupKey: LookupKey, shuffleManagerClass: String): Unit = {
     val clazz = Utils.classForName(shuffleManagerClass)
     require(
-      !clazz.isAssignableFrom(classOf[GlutenShuffleManager]),
-      "It's not allowed to register GlutenShuffleManager recursively")
+      !clazz.isAssignableFrom(classOf[GlutenShuffleManager]) &&
+        !classOf[GlutenShuffleManager].isAssignableFrom(clazz),
+      "It's not allowed to register GlutenShuffleManager or its subtype / supertype " +
+        "recursively"
+    )
     require(
       classOf[ShuffleManager].isAssignableFrom(clazz),
       s"Shuffle manager class to register is not an implementation of Spark ShuffleManager: " +
