@@ -22,7 +22,6 @@ import org.apache.spark.SparkConf
 import org.apache.spark.internal.Logging
 
 import org.apache.commons.io.FileUtils
-import org.apache.commons.lang3.StringUtils
 
 import java.io.{File, IOException}
 import java.nio.file.Paths
@@ -57,8 +56,14 @@ class SparkDirectoryUtil private (val roots: Array[String]) extends Logging {
   private val NAMESPACE_MAPPING: java.util.Map[String, Namespace] =
     new ConcurrentHashMap[String, Namespace]
 
-  def namespace(name: String): Namespace =
+  def namespace(name: String): Namespace = {
+    if (ROOTS.isEmpty) {
+      throw new IllegalStateException(
+        s"No available Gluten local directory for namespace '$name': none of the configured " +
+          s"local directories ${roots.mkString(", ")} could be created")
+    }
     NAMESPACE_MAPPING.computeIfAbsent(name, (name: String) => new Namespace(ROOTS, name))
+  }
 }
 
 object SparkDirectoryUtil extends Logging {
@@ -98,16 +103,19 @@ class Namespace(private val parents: Array[File], private val name: String) {
       path.toFile
   }
 
+  if (all.isEmpty) {
+    throw new IllegalStateException(
+      s"No available Gluten local directory in namespace '$name'")
+  }
+
   private val cycleLooper = Stream.continually(all).flatten.toIterator
 
   def mkChildDirRoundRobin(childDirName: String): File = synchronized {
-    if (!cycleLooper.hasNext) {
-      throw new IllegalStateException()
-    }
+    // No guards needed here: the constructor rejects an empty parent list, and
+    // cycleLooper iterates Stream.continually(all) so it never runs out; subDir
+    // is built by resolving a name under an absolute root path, so its path is
+    // never empty.
     val subDir = cycleLooper.next()
-    if (StringUtils.isEmpty(subDir.getAbsolutePath)) {
-      throw new IllegalArgumentException(s"Illegal local dir: $subDir")
-    }
     val path = Paths
       .get(subDir.getAbsolutePath)
       .resolve(childDirName)
