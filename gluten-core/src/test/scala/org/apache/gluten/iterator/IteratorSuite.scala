@@ -39,6 +39,25 @@ abstract class IteratorSuite extends AnyFunSuite {
     }
   }
 
+  test("Read time accumulation does not lose sub-millisecond reads") {
+    var totalMillis = 0L
+    val elementCount = 300000
+    val itr = Array.range(0, elementCount).iterator
+    val wrapped = wrap(itr)
+      .collectReadMillis(millis => totalMillis += millis)
+      .create()
+    var consumed = 0
+    while (wrapped.hasNext) {
+      wrapped.next()
+      consumed += 1
+    }
+    assert(consumed == elementCount)
+    // Each individual read takes well under a millisecond; converting per call
+    // used to truncate every duration to zero. The accumulated total over
+    // elementCount reads must be positive.
+    assert(totalMillis > 0L)
+  }
+
   test("Complete iterator") {
     var completeCount = 0
     TaskResources.runUnsafe {
