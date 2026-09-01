@@ -30,6 +30,7 @@ import java.util.concurrent.atomic.AtomicLong
 
 import scala.collection.mutable
 import scala.compat.Platform.ConcurrentModificationException
+import scala.util.control.NonFatal
 
 object TaskResources extends TaskListener with Logging {
   // And open java assert mode to get memory stack
@@ -224,9 +225,12 @@ object TaskResources extends TaskListener with Logging {
             }
             // We should first call `releaseAll` then remove the registries, because
             // the functions inside registries may register new resource to registries.
-            currentTaskRegistries.releaseAll()
-            context.taskMetrics().incPeakExecutionMemory(registry.getSharedUsage().peak())
-            RESOURCE_REGISTRIES.remove(context)
+            try {
+              currentTaskRegistries.releaseAll()
+            } finally {
+              context.taskMetrics().incPeakExecutionMemory(registry.getSharedUsage().peak())
+              RESOURCE_REGISTRIES.remove(context)
+            }
           }
         }
       })
@@ -290,12 +294,38 @@ class TaskResourceRegistry extends Logging {
 
   /** Release all managed resources according to priority and reversed order */
   private[task] def releaseAll(): Unit = lock {
+    val failures = mutable.ArrayBuffer.empty[Throwable]
     priorityToResourcesMapping.toSeq.sortBy(-_._1).foreach {
       case (_, resources) =>
-        resources.toSeq.reverse.foreach(release)
+        resources.toSeq.reverse.foreach {
+          resource =>
+            // resourceName() is user code too; parse it with a fallback so it
+            // cannot re-abort the release loop.
+            val name =
+              try resource.resourceName()
+              catch {
+                case NonFatal(_) => s"resource@${System.identityHashCode(resource)}"
+              }
+            try release(resource)
+            catch {
+              case e: Throwable =>
+                // One failing release must not skip the remaining ones or leave the
+                // registry uncleared; record the failure and rethrow it after the
+                // loop so callers still see the error.
+                failures += e
+                logError(s"Failed to release resource $name", e)
+            }
+        }
     }
     priorityToResourcesMapping.clear()
     resources.clear()
+    failures.headOption.foreach {
+      failure =>
+        // Keep the remaining failures attached; the logs are the only other
+        // record and may be swallowed by the completion-listener machinery.
+        failures.tail.foreach(failure.addSuppressed)
+        throw failure
+    }
   }
 
   /** Release single resource by ID */
