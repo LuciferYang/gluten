@@ -1470,7 +1470,7 @@ class VeloxSparkPlanExecApi extends SparkPlanExecApi with Logging {
     val unit = original match {
       case timestampDiff: TimestampDiff => timestampDiff.unit
       case _ =>
-        throw new UnsupportedOperationException(s"Not support expression TimestampDiff.")
+        throw new UnsupportedOperationException("Not support expression TimestampDiff.")
     }
     TimestampDiffTransformer(substraitExprName, unit, left, right, original)
   }
