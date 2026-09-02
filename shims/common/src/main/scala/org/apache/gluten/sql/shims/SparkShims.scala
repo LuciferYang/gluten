@@ -218,8 +218,7 @@ trait SparkShims {
     batchScan.keyGroupedPartitioning
   }
 
-  def getCommonPartitionValues(batchScan: BatchScanExec): Option[Seq[(InternalRow, Int)]] =
-    Option(Seq())
+  def getCommonPartitionValues(batchScan: BatchScanExec): Option[Seq[(InternalRow, Int)]]
 
   /**
    * Most of the code in this method is copied from
@@ -234,13 +233,20 @@ trait SparkShims {
       commonPartitionValues: Option[Seq[(InternalRow, Int)]],
       applyPartialClustering: Boolean,
       replicatePartitions: Boolean,
-      joinKeyPositions: Option[Seq[Int]] = None): Seq[Seq[InputPartition]] =
-    filteredPartitions
+      joinKeyPositions: Option[Seq[Int]] = None): Seq[Seq[InputPartition]]
 
-  def extractExpressionTimestampAddUnit(timestampAdd: Expression): Option[Seq[String]] =
-    Option.empty
+  def extractExpressionTimestampAddUnit(timestampAdd: Expression): Option[Seq[String]]
 
-  def withTryEvalMode(expr: Expression): Boolean
+  def withTryEvalMode(expr: Expression): Boolean = {
+    expr match {
+      case a: Add => a.evalMode == EvalMode.TRY
+      case s: Subtract => s.evalMode == EvalMode.TRY
+      case d: Divide => d.evalMode == EvalMode.TRY
+      case m: Multiply => m.evalMode == EvalMode.TRY
+      case c: Cast => c.evalMode == EvalMode.TRY
+      case _ => false
+    }
+  }
 
   def withAnsiEvalMode(expr: Expression): Boolean = {
     expr match {
