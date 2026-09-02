@@ -37,7 +37,6 @@ import org.apache.spark.sql.catalyst.util.InternalRowComparableWrapper
 import org.apache.spark.sql.catalyst.util.RebaseDateTime.RebaseSpec
 import org.apache.spark.sql.connector.read.{HasPartitionKey, InputPartition, Scan}
 import org.apache.spark.sql.execution._
-import org.apache.spark.sql.execution.adaptive.AdaptiveSparkPlanExec
 import org.apache.spark.sql.execution.datasources._
 import org.apache.spark.sql.execution.datasources.parquet.ParquetFilters
 import org.apache.spark.sql.execution.datasources.v2.{BatchScanExec, DataSourceV2ScanExecBase}
@@ -442,14 +441,6 @@ class Spark34Shims extends SparkShims {
     }
   }
 
-  override def extractExpressionTimestampDiffUnit(exp: Expression): Option[String] = {
-    exp match {
-      case timestampDiff: TimestampDiff =>
-        Some(timestampDiff.unit)
-      case _ => Option.empty
-    }
-  }
-
   override def widerDecimalType(d1: DecimalType, d2: DecimalType): DecimalType = {
     DecimalPrecision.widerDecimalType(d1, d2)
   }
@@ -473,10 +464,6 @@ class Spark34Shims extends SparkShims {
       planner: SparkPlanner,
       plan: LogicalPlan): SparkPlan =
     QueryExecution.createSparkPlan(sparkSession, planner, plan)
-
-  override def isFinalAdaptivePlan(p: AdaptiveSparkPlanExec): Boolean = {
-    p.isFinalPlan
-  }
 
   override def getShuffleBlockFetcherIterator(params: ShuffleBlockFetcherIteratorParams)
       : GlutenShuffleBlockFetcherIteratorBase = {

@@ -37,7 +37,6 @@ import org.apache.spark.sql.connector.catalog.Table
 import org.apache.spark.sql.connector.read.{InputPartition, Scan}
 import org.apache.spark.sql.connector.read.streaming.SparkDataStream
 import org.apache.spark.sql.execution._
-import org.apache.spark.sql.execution.adaptive.AdaptiveSparkPlanExec
 import org.apache.spark.sql.execution.datasources._
 import org.apache.spark.sql.execution.datasources.parquet.ParquetFilters
 import org.apache.spark.sql.execution.datasources.v2.{BatchScanExec, DataSourceV2ScanExecBase}
@@ -254,9 +253,6 @@ trait SparkShims {
   def extractExpressionTimestampAddUnit(timestampAdd: Expression): Option[Seq[String]] =
     Option.empty
 
-  def extractExpressionTimestampDiffUnit(timestampDiff: Expression): Option[String] =
-    Option.empty
-
   def withTryEvalMode(expr: Expression): Boolean = false
 
   def withAnsiEvalMode(expr: Expression): Boolean = {
@@ -357,8 +353,6 @@ trait SparkShims {
       sparkSession: SparkSession,
       planner: SparkPlanner,
       plan: LogicalPlan): SparkPlan
-
-  def isFinalAdaptivePlan(p: AdaptiveSparkPlanExec): Boolean
 
   /**
    * Checks if the given JoinType is LeftSingle. LeftSingle is a Spark 4.0+ join type, semantically
