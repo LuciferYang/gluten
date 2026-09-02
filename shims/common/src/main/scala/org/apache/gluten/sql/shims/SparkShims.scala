@@ -22,15 +22,17 @@ import org.apache.gluten.expression.Sig
 import org.apache.spark.{SparkContext, SparkException}
 import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.internal.io.FileCommitProtocol
+import org.apache.spark.paths.SparkPath
 import org.apache.spark.sql.{AnalysisException, SparkSession}
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.catalog.BucketSpec
-import org.apache.spark.sql.catalyst.expressions.{Attribute, BinaryArithmetic, Expression, InputFileBlockLength, InputFileBlockStart, InputFileName, RaiseError, SortOrder, UnBase64}
+import org.apache.spark.sql.catalyst.expressions.{Add, Attribute, BinaryArithmetic, Cast, Divide, EvalMode, Expression, InputFileBlockLength, InputFileBlockStart, InputFileName, IntegralDivide, Multiply, RaiseError, SortOrder, Subtract, UnBase64}
 import org.apache.spark.sql.catalyst.plans.JoinType
 import org.apache.spark.sql.catalyst.plans.QueryPlan
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
 import org.apache.spark.sql.catalyst.plans.physical.Partitioning
 import org.apache.spark.sql.catalyst.rules.Rule
+import org.apache.spark.sql.catalyst.util.TimestampFormatter
 import org.apache.spark.sql.connector.catalog.Table
 import org.apache.spark.sql.connector.read.{InputPartition, Scan}
 import org.apache.spark.sql.connector.read.streaming.SparkDataStream
@@ -50,9 +52,11 @@ import org.apache.hadoop.fs.{FileStatus, Path}
 import org.apache.parquet.hadoop.metadata.{CompressionCodecName, ParquetMetadata}
 import org.apache.parquet.schema.MessageType
 
+import java.time.ZoneOffset
 import java.util.{Map => JMap}
 
 import scala.collection.JavaConverters._
+import scala.collection.mutable
 import scala.reflect.ClassTag
 
 case class SparkShimDescriptor(major: Int, minor: Int, patch: Int) {
@@ -89,21 +93,30 @@ trait SparkShims {
       sparkSession: SparkSession,
       readFunction: PartitionedFile => Iterator[InternalRow],
       filePartitions: Seq[FilePartition],
-      fileSourceScanExec: FileSourceScanExec): FileScanRDD
+      fileSourceScanExec: FileSourceScanExec): FileScanRDD = {
+    new FileScanRDD(
+      sparkSession,
+      readFunction,
+      filePartitions,
+      new StructType(
+        fileSourceScanExec.requiredSchema.fields ++
+          fileSourceScanExec.relation.partitionSchema.fields),
+      fileSourceScanExec.fileConstantMetadataColumns
+    )
+  }
 
   def filesGroupedToBuckets(
       selectedPartitions: Array[PartitionDirectory]): Map[Int, Array[PartitionedFile]]
 
-  // Spark3.4 new add table parameter in BatchScanExec.
-  def getBatchScanExecTable(batchScan: BatchScanExec): Table
+  def getBatchScanExecTable(batchScan: BatchScanExec): Table = batchScan.table
 
-  // The PartitionedFile API changed in spark 3.4
   def generatePartitionedFile(
       partitionValues: InternalRow,
       filePath: String,
       start: Long,
       length: Long,
-      @transient locations: Array[String] = Array.empty): PartitionedFile
+      @transient locations: Array[String] = Array.empty): PartitionedFile =
+    PartitionedFile(partitionValues, SparkPath.fromPathString(filePath), start, length, locations)
 
   def isWindowGroupLimitExec(plan: SparkPlan): Boolean = false
 
@@ -184,17 +197,40 @@ trait SparkShims {
       file: PartitionedFile,
       metadataColumnNames: Seq[String] = Seq.empty): Map[String, String] = {
     val requested = metadataColumnNames.toSet
-    Seq(
+    val originMetadataColumn = Seq(
       InputFileName().prettyName -> file.filePath.toString,
       InputFileBlockStart().prettyName -> file.start.toString,
       InputFileBlockLength().prettyName -> file.length.toString
     ).collect { case (name, value) if requested.contains(name) => name -> value }.toMap
+    val metadataColumn: mutable.Map[String, String] = mutable.Map(originMetadataColumn.toSeq: _*)
+    val path = new Path(file.filePath.toString)
+    for (columnName <- metadataColumnNames) {
+      columnName match {
+        case FileFormat.FILE_PATH => metadataColumn += (FileFormat.FILE_PATH -> path.toString)
+        case FileFormat.FILE_NAME => metadataColumn += (FileFormat.FILE_NAME -> path.getName)
+        case FileFormat.FILE_SIZE =>
+          metadataColumn += (FileFormat.FILE_SIZE -> file.fileSize.toString)
+        case FileFormat.FILE_MODIFICATION_TIME =>
+          val fileModifyTime = TimestampFormatter
+            .getFractionFormatter(ZoneOffset.UTC)
+            .format(file.modificationTime * 1000L)
+          metadataColumn += (FileFormat.FILE_MODIFICATION_TIME -> fileModifyTime)
+        case FileFormat.FILE_BLOCK_START =>
+          metadataColumn += (FileFormat.FILE_BLOCK_START -> file.start.toString)
+        case FileFormat.FILE_BLOCK_LENGTH =>
+          metadataColumn += (FileFormat.FILE_BLOCK_LENGTH -> file.length.toString)
+        case _ =>
+      }
+    }
+    metadataColumn.toMap
   }
 
   // For compatibility with Spark-3.5.
   def getAnalysisExceptionPlan(ae: AnalysisException): Option[LogicalPlan]
 
-  def getKeyGroupedPartitioning(batchScan: BatchScanExec): Option[Seq[Expression]] = Option(Seq())
+  def getKeyGroupedPartitioning(batchScan: BatchScanExec): Option[Seq[Expression]] = {
+    batchScan.keyGroupedPartitioning
+  }
 
   def getCommonPartitionValues(batchScan: BatchScanExec): Option[Seq[(InternalRow, Int)]] =
     Option(Seq())
@@ -223,7 +259,17 @@ trait SparkShims {
 
   def withTryEvalMode(expr: Expression): Boolean = false
 
-  def withAnsiEvalMode(expr: Expression): Boolean = false
+  def withAnsiEvalMode(expr: Expression): Boolean = {
+    expr match {
+      case a: Add => a.evalMode == EvalMode.ANSI
+      case s: Subtract => s.evalMode == EvalMode.ANSI
+      case d: Divide => d.evalMode == EvalMode.ANSI
+      case m: Multiply => m.evalMode == EvalMode.ANSI
+      case c: Cast => c.evalMode == EvalMode.ANSI
+      case i: IntegralDivide => i.evalMode == EvalMode.ANSI
+      case _ => false
+    }
+  }
 
   def isNullIntolerant(expr: Expression): Boolean
 
