@@ -31,7 +31,6 @@ import org.apache.spark.sql.catalyst.plans.JoinType
 import org.apache.spark.sql.catalyst.plans.QueryPlan
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
 import org.apache.spark.sql.catalyst.plans.physical.Partitioning
-import org.apache.spark.sql.catalyst.rules.Rule
 import org.apache.spark.sql.catalyst.util.TimestampFormatter
 import org.apache.spark.sql.connector.catalog.Table
 import org.apache.spark.sql.connector.read.{InputPartition, Scan}
@@ -123,11 +122,9 @@ trait SparkShims {
 
   def getWindowGroupLimitExec(windowGroupLimitExecShim: WindowGroupLimitExecShim): SparkPlan = null
 
-  def getLimitAndOffsetFromGlobalLimit(plan: GlobalLimitExec): (Int, Int) = (plan.limit, 0)
+  def getLimitAndOffsetFromGlobalLimit(plan: GlobalLimitExec): (Int, Int)
 
-  def getLimitAndOffsetFromTopK(plan: TakeOrderedAndProjectExec): (Int, Int) = (plan.limit, 0)
-
-  def getExtendedColumnarPostRules(): List[SparkSession => Rule[SparkPlan]]
+  def getLimitAndOffsetFromTopK(plan: TakeOrderedAndProjectExec): (Int, Int)
 
   def writeFilesExecuteTask(
       description: WriteJobDescription,
@@ -136,28 +133,18 @@ trait SparkShims {
       sparkPartitionId: Int,
       sparkAttemptNumber: Int,
       committer: FileCommitProtocol,
-      iterator: Iterator[InternalRow]): WriteTaskResult = {
-    throw new UnsupportedOperationException()
-  }
+      iterator: Iterator[InternalRow]): WriteTaskResult
 
-  def enableNativeWriteFilesByDefault(): Boolean = false
+  def enableNativeWriteFilesByDefault(): Boolean
 
-  // Planned V1 writes were introduced in Spark 3.4. Older versions do not expose a required
-  // ordering utility and keep the default empty ordering.
-  // TODO: Remove this shim after dropping Spark 3.3 support.
   def getV1WriteRequiredOrdering(
       outputColumns: Seq[Attribute],
       partitionColumns: Seq[Attribute],
       bucketSpec: Option[BucketSpec],
       options: Map[String, String],
-      numStaticPartitionCols: Int): Seq[SortOrder] = Seq.empty
+      numStaticPartitionCols: Int): Seq[SortOrder]
 
-  def broadcastInternal[T: ClassTag](sc: SparkContext, value: T): Broadcast[T] = {
-    // Since Spark 3.4, the `sc.broadcast` has been optimized to use `sc.broadcastInternal`.
-    // More details see SPARK-39983.
-    // TODO, remove this shim once we drop Spark3.3 and previous
-    sc.broadcast(value)
-  }
+  def broadcastInternal[T: ClassTag](sc: SparkContext, value: T): Broadcast[T]
 
   // To be compatible with Spark-3.5 and later
   // See https://github.com/apache/spark/pull/41440
@@ -253,7 +240,7 @@ trait SparkShims {
   def extractExpressionTimestampAddUnit(timestampAdd: Expression): Option[Seq[String]] =
     Option.empty
 
-  def withTryEvalMode(expr: Expression): Boolean = false
+  def withTryEvalMode(expr: Expression): Boolean
 
   def withAnsiEvalMode(expr: Expression): Boolean = {
     expr match {
@@ -274,9 +261,7 @@ trait SparkShims {
       schema: MessageType,
       caseSensitive: Option[Boolean] = None): ParquetFilters
 
-  def extractExpressionArrayInsert(arrayInsert: Expression): Seq[Expression] = {
-    throw new UnsupportedOperationException("ArrayInsert not supported.")
-  }
+  def extractExpressionArrayInsert(arrayInsert: Expression): Seq[Expression]
 
   /** Shim method for usages from GlutenExplainUtils.scala. */
   def withOperatorIdMap[T](idMap: java.util.Map[QueryPlan[_], Int])(body: => T): T = {
@@ -307,9 +292,9 @@ trait SparkShims {
   def getOtherConstantMetadataColumnValues(file: PartitionedFile): JMap[String, Object] =
     Map.empty[String, Any].asJava.asInstanceOf[JMap[String, Object]]
 
-  def getCollectLimitOffset(plan: CollectLimitExec): Int = 0
+  def getCollectLimitOffset(plan: CollectLimitExec): Int
 
-  def unBase64FunctionFailsOnError(unBase64: UnBase64): Boolean = false
+  def unBase64FunctionFailsOnError(unBase64: UnBase64): Boolean
 
   def widerDecimalType(d1: DecimalType, d2: DecimalType): DecimalType
 

@@ -32,7 +32,6 @@ import org.apache.spark.sql.catalyst.expressions.aggregate._
 import org.apache.spark.sql.catalyst.plans.QueryPlan
 import org.apache.spark.sql.catalyst.plans.logical.LogicalPlan
 import org.apache.spark.sql.catalyst.plans.physical.{KeyGroupedPartitioning, Partitioning}
-import org.apache.spark.sql.catalyst.rules.Rule
 import org.apache.spark.sql.catalyst.types.DataTypeUtils
 import org.apache.spark.sql.catalyst.util.InternalRowComparableWrapper
 import org.apache.spark.sql.catalyst.util.RebaseDateTime.RebaseSpec
@@ -169,8 +168,6 @@ class Spark35Shims extends SparkShims {
   override def getLimitAndOffsetFromTopK(plan: TakeOrderedAndProjectExec): (Int, Int) = {
     (getLimit(plan.limit, plan.offset), plan.offset)
   }
-
-  override def getExtendedColumnarPostRules(): List[SparkSession => Rule[SparkPlan]] = List()
 
   override def writeFilesExecuteTask(
       description: WriteJobDescription,
