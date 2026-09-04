@@ -1457,7 +1457,7 @@ class VeloxSparkPlanExecApi extends SparkPlanExecApi with Logging {
     val extract =
       SparkShimLoader.getSparkShims.extractExpressionTimestampAddUnit(original)
     if (extract.isEmpty) {
-      throw new UnsupportedOperationException(s"Not support expression TimestampAdd.")
+      throw new UnsupportedOperationException("Not support expression TimestampAdd.")
     }
     TimestampAddTransformer(substraitExprName, extract.get.head, left, right, original)
   }
