@@ -21,12 +21,10 @@ import org.apache.gluten.expression.{ExpressionNames, Sig}
 import org.apache.gluten.sql.shims.SparkShims
 
 import org.apache.spark._
-import org.apache.spark.broadcast.Broadcast
 import org.apache.spark.internal.io.FileCommitProtocol
 import org.apache.spark.sql.{AnalysisException, SparkSession}
 import org.apache.spark.sql.catalyst.{ExtendedAnalysisException, InternalRow}
 import org.apache.spark.sql.catalyst.analysis.DecimalPrecisionTypeCoercion
-import org.apache.spark.sql.catalyst.catalog.BucketSpec
 import org.apache.spark.sql.catalyst.expressions._
 import org.apache.spark.sql.catalyst.expressions.aggregate._
 import org.apache.spark.sql.catalyst.plans.{JoinType, LeftSingle}
@@ -56,7 +54,6 @@ import org.apache.parquet.schema.{GroupType, LogicalTypeAnnotation, MessageType}
 import java.util.{Map => JMap}
 
 import scala.jdk.CollectionConverters._
-import scala.reflect.ClassTag
 
 class Spark41Shims extends SparkShims {
 
@@ -123,20 +120,6 @@ class Spark41Shims extends SparkShims {
       cause = null)
   }
 
-  private def getLimit(limit: Int, offset: Int): Int = {
-    if (limit == -1) {
-      // Only offset specified, so fetch the maximum number rows
-      Int.MaxValue
-    } else {
-      assert(limit > offset)
-      limit - offset
-    }
-  }
-
-  override def getLimitAndOffsetFromGlobalLimit(plan: GlobalLimitExec): (Int, Int) = {
-    (getLimit(plan.limit, plan.offset), plan.offset)
-  }
-
   override def isWindowGroupLimitExec(plan: SparkPlan): Boolean = plan match {
     case _: WindowGroupLimitExec => true
     case _ => false
@@ -174,10 +157,6 @@ class Spark41Shims extends SparkShims {
     )
   }
 
-  override def getLimitAndOffsetFromTopK(plan: TakeOrderedAndProjectExec): (Int, Int) = {
-    (getLimit(plan.limit, plan.offset), plan.offset)
-  }
-
   override def writeFilesExecuteTask(
       description: WriteJobDescription,
       jobTrackerID: String,
@@ -195,26 +174,6 @@ class Spark41Shims extends SparkShims {
       committer,
       iterator
     )
-  }
-
-  override def enableNativeWriteFilesByDefault(): Boolean = true
-
-  override def getV1WriteRequiredOrdering(
-      outputColumns: Seq[Attribute],
-      partitionColumns: Seq[Attribute],
-      bucketSpec: Option[BucketSpec],
-      options: Map[String, String],
-      numStaticPartitionCols: Int): Seq[SortOrder] = {
-    V1WritesUtils.getSortOrder(
-      outputColumns,
-      partitionColumns,
-      bucketSpec,
-      options,
-      numStaticPartitionCols)
-  }
-
-  override def broadcastInternal[T: ClassTag](sc: SparkContext, value: T): Broadcast[T] = {
-    SparkContextUtils.broadcastInternal(sc, value)
   }
 
   override def setJobDescriptionOrTagForBroadcastExchange(
@@ -452,11 +411,6 @@ class Spark41Shims extends SparkShims {
     )
   }
 
-  override def extractExpressionArrayInsert(arrayInsert: Expression): Seq[Expression] = {
-    val expr = arrayInsert.asInstanceOf[ArrayInsert]
-    Seq(expr.srcArrayExpr, expr.posExpr, expr.itemExpr, Literal(expr.legacyNegativeIndex))
-  }
-
   override def withOperatorIdMap[T](idMap: java.util.Map[QueryPlan[_], Int])(body: => T): T = {
     val prevIdMap = QueryPlan.localIdMap.get()
     try {
@@ -515,12 +469,6 @@ class Spark41Shims extends SparkShims {
 
   override def getOtherConstantMetadataColumnValues(file: PartitionedFile): JMap[String, Object] =
     file.otherConstantMetadataColumnValues.asJava.asInstanceOf[JMap[String, Object]]
-
-  override def getCollectLimitOffset(plan: CollectLimitExec): Int = {
-    plan.offset
-  }
-
-  override def unBase64FunctionFailsOnError(unBase64: UnBase64): Boolean = unBase64.failOnError
 
   override def extractExpressionTimestampAddUnit(exp: Expression): Option[Seq[String]] = {
     exp match {

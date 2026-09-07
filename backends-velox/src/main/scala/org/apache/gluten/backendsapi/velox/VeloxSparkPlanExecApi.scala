@@ -148,7 +148,7 @@ class VeloxSparkPlanExecApi extends SparkPlanExecApi with Logging {
       right: ExpressionTransformer,
       original: Expression,
       checkArithmeticExprName: String): ExpressionTransformer = {
-    if (SparkShimLoader.getSparkShims.withTryEvalMode(original)) {
+    if (ExpressionUtils.withTryEvalMode(original)) {
       original.dataType match {
         case LongType | IntegerType | ShortType | ByteType =>
         case _ =>
@@ -159,7 +159,7 @@ class VeloxSparkPlanExecApi extends SparkPlanExecApi with Logging {
         ExpressionMappings.expressionsMap(classOf[TryEval]),
         Seq(GenericExpressionTransformer(checkArithmeticExprName, Seq(left, right), original)),
         original)
-    } else if (SparkShimLoader.getSparkShims.withAnsiEvalMode(original)) {
+    } else if (ExpressionUtils.withAnsiEvalMode(original)) {
       GenericExpressionTransformer(checkArithmeticExprName, Seq(left, right), original)
     } else {
       GenericExpressionTransformer(substraitExprName, Seq(left, right), original)
@@ -1240,7 +1240,7 @@ class VeloxSparkPlanExecApi extends SparkPlanExecApi with Logging {
       substraitExprName: String,
       child: ExpressionTransformer,
       expr: UnBase64): ExpressionTransformer = {
-    if (SparkShimLoader.getSparkShims.unBase64FunctionFailsOnError(expr)) {
+    if (expr.failOnError) {
       GlutenExceptionUtil
         .throwsNotFullySupported(
           ExpressionNames.UNBASE64,
