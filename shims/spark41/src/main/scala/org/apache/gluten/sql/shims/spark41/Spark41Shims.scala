@@ -21,7 +21,6 @@ import org.apache.gluten.expression.{ExpressionNames, Sig}
 import org.apache.gluten.sql.shims.SparkShims
 
 import org.apache.spark._
-import org.apache.spark.internal.io.FileCommitProtocol
 import org.apache.spark.sql.{AnalysisException, SparkSession}
 import org.apache.spark.sql.catalyst.{ExtendedAnalysisException, InternalRow}
 import org.apache.spark.sql.catalyst.analysis.DecimalPrecisionTypeCoercion
@@ -154,25 +153,6 @@ class Spark41Shims extends SparkShims {
       windowGroupLimitExecShim.limit,
       mode,
       windowGroupLimitExecShim.child
-    )
-  }
-
-  override def writeFilesExecuteTask(
-      description: WriteJobDescription,
-      jobTrackerID: String,
-      sparkStageId: Int,
-      sparkPartitionId: Int,
-      sparkAttemptNumber: Int,
-      committer: FileCommitProtocol,
-      iterator: Iterator[InternalRow]): WriteTaskResult = {
-    GlutenFileFormatWriter.writeFilesExecuteTask(
-      description,
-      jobTrackerID,
-      sparkStageId,
-      sparkPartitionId,
-      sparkAttemptNumber,
-      committer,
-      iterator
     )
   }
 

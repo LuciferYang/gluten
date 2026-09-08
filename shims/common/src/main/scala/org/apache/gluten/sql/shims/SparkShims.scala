@@ -20,7 +20,6 @@ import org.apache.gluten.GlutenBuildInfo.SPARK_COMPILE_VERSION
 import org.apache.gluten.expression.Sig
 
 import org.apache.spark.{SparkContext, SparkException}
-import org.apache.spark.internal.io.FileCommitProtocol
 import org.apache.spark.sql.{AnalysisException, SparkSession}
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.expressions.{Attribute, BinaryArithmetic, Expression, RaiseError}
@@ -87,15 +86,6 @@ trait SparkShims {
   def getWindowGroupLimitExecShim(plan: SparkPlan): WindowGroupLimitExecShim = null
 
   def getWindowGroupLimitExec(windowGroupLimitExecShim: WindowGroupLimitExecShim): SparkPlan = null
-
-  def writeFilesExecuteTask(
-      description: WriteJobDescription,
-      jobTrackerID: String,
-      sparkStageId: Int,
-      sparkPartitionId: Int,
-      sparkAttemptNumber: Int,
-      committer: FileCommitProtocol,
-      iterator: Iterator[InternalRow]): WriteTaskResult
 
   // To be compatible with Spark-3.5 and later
   // See https://github.com/apache/spark/pull/41440

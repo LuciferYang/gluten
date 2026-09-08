@@ -21,7 +21,6 @@ import org.apache.gluten.sql.shims.SparkShims
 import org.apache.gluten.utils.ExceptionUtils
 
 import org.apache.spark._
-import org.apache.spark.internal.io.FileCommitProtocol
 import org.apache.spark.sql.{AnalysisException, SparkSession}
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.catalyst.analysis.DecimalPrecision
@@ -103,25 +102,6 @@ class Spark34Shims extends SparkShims {
       errorClass = "INVALID_BUCKET_FILE",
       messageParameters = Map("path" -> path),
       cause = null)
-  }
-
-  override def writeFilesExecuteTask(
-      description: WriteJobDescription,
-      jobTrackerID: String,
-      sparkStageId: Int,
-      sparkPartitionId: Int,
-      sparkAttemptNumber: Int,
-      committer: FileCommitProtocol,
-      iterator: Iterator[InternalRow]): WriteTaskResult = {
-    GlutenFileFormatWriter.writeFilesExecuteTask(
-      description,
-      jobTrackerID,
-      sparkStageId,
-      sparkPartitionId,
-      sparkAttemptNumber,
-      committer,
-      iterator
-    )
   }
 
   def setJobDescriptionOrTagForBroadcastExchange(
