@@ -174,7 +174,7 @@ class GlutenClickHouseTPCHParquetBucketSuite
     withSQLConf(
       ("spark.sql.optimizer.runtime.bloomFilter.applicationSideScanSizeThreshold", "1KB"),
       ("spark.sql.optimizer.runtime.bloomFilter.enabled", "true")) {
-      customCheck(3)(NOOP)
+      check(3)
     }
   }
 
@@ -209,7 +209,7 @@ class GlutenClickHouseTPCHParquetBucketSuite
     withSQLConf(
       ("spark.sql.optimizer.runtime.bloomFilter.applicationSideScanSizeThreshold", "1KB"),
       ("spark.sql.optimizer.runtime.bloomFilter.enabled", "true")) {
-      customCheck(4)(NOOP)
+      check(4)
     }
   }
 
@@ -257,7 +257,7 @@ class GlutenClickHouseTPCHParquetBucketSuite
     withSQLConf(
       ("spark.sql.optimizer.runtime.bloomFilter.applicationSideScanSizeThreshold", "1KB"),
       ("spark.sql.optimizer.runtime.bloomFilter.enabled", "true")) {
-      customCheck(12)(NOOP)
+      check(12)
     }
   }
 
@@ -335,7 +335,7 @@ class GlutenClickHouseTPCHParquetBucketSuite
     withSQLConf(
       ("spark.sql.optimizer.runtime.bloomFilter.applicationSideScanSizeThreshold", "1KB"),
       ("spark.sql.optimizer.runtime.bloomFilter.enabled", "true")) {
-      customCheck(20)(NOOP)
+      check(20)
     }
   }
 

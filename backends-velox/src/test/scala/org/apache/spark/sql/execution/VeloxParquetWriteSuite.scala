@@ -219,9 +219,7 @@ class VeloxParquetWriteSuite extends VeloxWholeStageTransformerSuite with WriteU
         .range(100)
         .toDF("id")
         .createOrReplaceTempView("ctas_temp")
-      checkNativeWrite(
-        "CREATE TABLE velox_ctas USING PARQUET AS SELECT * FROM ctas_temp",
-        expectNative = true)
+      checkNativeWrite("CREATE TABLE velox_ctas USING PARQUET AS SELECT * FROM ctas_temp")
     }
   }
 
