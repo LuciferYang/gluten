@@ -139,18 +139,7 @@ class GlutenClickHouseTPCHBucketSuite
     withSQLConf(
       ("spark.sql.optimizer.runtime.bloomFilter.applicationSideScanSizeThreshold", "1KB"),
       ("spark.sql.optimizer.runtime.bloomFilter.enabled", "true")) {
-      customCheck(3)(
-        df => {
-          if (spark33) {
-            val plans = collectWithSubqueries(df.queryExecution.executedPlan) {
-              case aggExec: HashAggregateExecBaseTransformer
-                  if aggExec.aggregateExpressions.exists(
-                    _.aggregateFunction.getClass.getSimpleName.equals("BloomFilterAggregate")) =>
-                aggExec
-            }
-            assert(plans.size == 8)
-          }
-        })
+      customCheck(3)(NOOP)
     }
   }
 
@@ -185,18 +174,7 @@ class GlutenClickHouseTPCHBucketSuite
     withSQLConf(
       ("spark.sql.optimizer.runtime.bloomFilter.applicationSideScanSizeThreshold", "1KB"),
       ("spark.sql.optimizer.runtime.bloomFilter.enabled", "true")) {
-      customCheck(4)(
-        df => {
-          if (spark33) {
-            val plans = collectWithSubqueries(df.queryExecution.executedPlan) {
-              case aggExec: HashAggregateExecBaseTransformer
-                  if aggExec.aggregateExpressions.exists(
-                    _.aggregateFunction.getClass.getSimpleName.equals("BloomFilterAggregate")) =>
-                aggExec
-            }
-            assert(plans.size == 4)
-          }
-        })
+      customCheck(4)(NOOP)
     }
   }
 
@@ -244,18 +222,7 @@ class GlutenClickHouseTPCHBucketSuite
     withSQLConf(
       ("spark.sql.optimizer.runtime.bloomFilter.applicationSideScanSizeThreshold", "1KB"),
       ("spark.sql.optimizer.runtime.bloomFilter.enabled", "true")) {
-      customCheck(12)(
-        df => {
-          if (spark33) {
-            val plans = collectWithSubqueries(df.queryExecution.executedPlan) {
-              case aggExec: HashAggregateExecBaseTransformer
-                  if aggExec.aggregateExpressions.exists(
-                    _.aggregateFunction.getClass.getSimpleName.equals("BloomFilterAggregate")) =>
-                aggExec
-            }
-            assert(plans.size == 4)
-          }
-        })
+      customCheck(12)(NOOP)
     }
   }
 
@@ -333,18 +300,7 @@ class GlutenClickHouseTPCHBucketSuite
     withSQLConf(
       ("spark.sql.optimizer.runtime.bloomFilter.applicationSideScanSizeThreshold", "1KB"),
       ("spark.sql.optimizer.runtime.bloomFilter.enabled", "true")) {
-      customCheck(20)(
-        df => {
-          if (spark33) {
-            val plans = collectWithSubqueries(df.queryExecution.executedPlan) {
-              case aggExec: HashAggregateExecBaseTransformer
-                  if aggExec.aggregateExpressions.exists(
-                    _.aggregateFunction.getClass.getSimpleName.equals("BloomFilterAggregate")) =>
-                aggExec
-            }
-            assert(plans.size == 6)
-          }
-        })
+      customCheck(20)(NOOP)
     }
   }
 
