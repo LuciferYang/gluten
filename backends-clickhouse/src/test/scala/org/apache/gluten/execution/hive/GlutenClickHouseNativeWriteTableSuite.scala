@@ -326,7 +326,8 @@ class GlutenClickHouseNativeWriteTableSuite
     }
   }
 
-  // TODO: after rebase-25.12, failed with spark35 + Orc (Memory limit exceeded), fix later
+  // Ignored: fails on Spark 3.5 with Orc after the ClickHouse 25.12 rebase (Memory limit
+  // exceeded). TODO: fix and re-enable.
   ignore("test 2-col partitioned table") {
     val fields: ListMap[String, String] = ListMap(
       ("string_field", "string"),
@@ -550,7 +551,8 @@ class GlutenClickHouseNativeWriteTableSuite
     }
   }
 
-  // TODO: after rebase-25.12, failed with spark35 + Orc (Memory limit exceeded), fix later
+  // Ignored: fails on Spark 3.5 with Orc after the ClickHouse 25.12 rebase (Memory limit
+  // exceeded). TODO: fix and re-enable.
   ignore("test 1-col partitioned + 2-col bucketed table") {
     val fields: ListMap[String, String] = ListMap(
       ("string_field", "string"),
@@ -625,7 +627,8 @@ class GlutenClickHouseNativeWriteTableSuite
     }
   }
 
-  // TODO: after rebase-25.12, failed with spark35 + Orc (Memory limit exceeded), fix later
+  // Ignored: fails on Spark 3.5 with Orc after the ClickHouse 25.12 rebase (Memory limit
+  // exceeded). TODO: fix and re-enable.
   ignore("test decimal with rand()") {
     nativeWrite {
       format =>
