@@ -60,7 +60,9 @@ object SparkTaskUtil {
 
     val ctor = {
       val ctors = classOf[TaskContextImpl].getDeclaredConstructors
-      assert(ctors.size == 1)
+      require(
+        ctors.size == 1,
+        s"Expected TaskContextImpl to declare exactly one constructor, found ${ctors.size}")
       ctors.head
     }
 
