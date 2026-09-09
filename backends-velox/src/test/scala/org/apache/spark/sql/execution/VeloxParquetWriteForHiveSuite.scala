@@ -291,7 +291,7 @@ class VeloxParquetWriteForHiveSuite extends GlutenQueryTest with SQLTestUtils wi
                 reader =>
                   val column = reader.getFooter.getBlocks.get(0).getColumns.get(0)
                   // native writer and vanilla spark hive writer should be consistent
-                  "zstd".equalsIgnoreCase(column.getCodec.toString)
+                  assert("zstd".equalsIgnoreCase(column.getCodec.toString))
               }
             }
           }

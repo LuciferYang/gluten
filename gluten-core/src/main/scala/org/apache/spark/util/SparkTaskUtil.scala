@@ -64,6 +64,8 @@ object SparkTaskUtil {
       ctors.head
     }
 
+    // The arguments below are positional: their order must match TaskContextImpl's primary
+    // constructor.
     ctor
       .newInstance(
         stageId,

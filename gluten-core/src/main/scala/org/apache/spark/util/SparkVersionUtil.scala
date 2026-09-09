@@ -17,8 +17,7 @@
 package org.apache.spark.util
 
 object SparkVersionUtil {
-  private val comparedWithSpark35 = compareMajorMinorVersion((3, 5))
-  val gteSpark35: Boolean = comparedWithSpark35 >= 0
+  val gteSpark35: Boolean = compareMajorMinorVersion((3, 5)) >= 0
   val gteSpark40: Boolean = compareMajorMinorVersion((4, 0)) >= 0
   val gteSpark41: Boolean = compareMajorMinorVersion((4, 1)) >= 0
 
