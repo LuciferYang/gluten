@@ -62,8 +62,9 @@ object DecimalArithmeticUtil {
           resultPrecision = intDig + decDig
           resultScale = decDig
         }
-      // Remainder and Pmod reach this branch: isDecimalArithmetic admits them but no result type
-      // is derived above, so this exception is what makes decimal % and pmod fall back.
+      // Remainder and Pmod land here: isDecimalArithmetic admits them but no result type is
+      // derived above. On the transformCheckOverflow path this throw is what makes decimal % and
+      // pmod fall back.
       case other =>
         throw new GlutenNotSupportException(s"$other is not supported.")
     }
@@ -82,7 +83,7 @@ object DecimalArithmeticUtil {
 
   // Whether the expression is an arithmetic over two decimals. Remainder and Pmod are admitted on
   // purpose even though getResultType rejects them: that rejection is what makes decimal % and
-  // pmod fall back, and dropping them here would offload both without a declared result type.
+  // pmod fall back, and dropping them here would offload both through the generic arm instead.
   def isDecimalArithmetic(b: BinaryArithmetic): Boolean = {
     if (
       b.left.dataType.isInstanceOf[DecimalType] &&
