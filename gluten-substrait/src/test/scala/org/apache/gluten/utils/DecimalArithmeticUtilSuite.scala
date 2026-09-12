@@ -30,7 +30,8 @@ class DecimalArithmeticUtilSuite extends AnyFunSuite {
   private val right = Literal.create(BigDecimal("2.00"), decimalType)
 
   // isDecimalArithmetic admits Remainder and Pmod so that getResultType gets a chance to reject
-  // them, and that rejection is the only thing keeping decimal % and pmod off the native path.
+  // them. On the transformCheckOverflow path that rejection is what keeps decimal % and pmod off
+  // the native path.
   test("remainder and pmod are admitted but have no result type") {
     Seq(Remainder(left, right), Pmod(left, right)).foreach {
       expr =>

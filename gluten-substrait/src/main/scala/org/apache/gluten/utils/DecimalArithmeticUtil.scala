@@ -82,8 +82,8 @@ object DecimalArithmeticUtil {
   }
 
   // Whether the expression is an arithmetic over two decimals. Remainder and Pmod are admitted on
-  // purpose even though getResultType rejects them: that rejection is what makes decimal % and
-  // pmod fall back, and dropping them here would offload both through the generic arm instead.
+  // purpose even though getResultType rejects them: dropping them here would send both through the
+  // generic arm and offload them. See the comment on that rejection in getResultType.
   def isDecimalArithmetic(b: BinaryArithmetic): Boolean = {
     if (
       b.left.dataType.isInstanceOf[DecimalType] &&
