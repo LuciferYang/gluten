@@ -840,7 +840,6 @@ abstract class DeltaSuite extends WholeStageTransformerSuite {
     }
   }
 
-  // TIMESTAMP_NTZ was introduced in Spark 3.4 / Delta 2.4
   test("delta: create table with TIMESTAMP_NTZ and return correct results") {
     withTable("delta_ntz") {
       spark.sql("CREATE TABLE delta_ntz(c1 STRING, c2 TIMESTAMP, c3 TIMESTAMP_NTZ) USING DELTA")

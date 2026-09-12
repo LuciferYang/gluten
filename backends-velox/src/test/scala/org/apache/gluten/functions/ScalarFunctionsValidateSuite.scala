@@ -652,7 +652,6 @@ class ScalarFunctionsValidateSuite extends FunctionsValidateSuite {
 
   // Add test suite for CharVarcharCodegenUtils functions.
   // A ProjectExecTransformer is expected to be constructed after expr support.
-  // We currently test below functions with Spark v3.4
   test("charTypeWriteSideCheck") {
     withTable("src", "dest") {
 
