@@ -459,6 +459,30 @@ class MathFunctionsValidateSuite extends FunctionsValidateSuite {
     }
   }
 
+  test("GLUTEN-7082: nested decimal arithmetic with a literal") {
+    runQueryAndCompare(
+      "select cast(l_orderkey as decimal(20,0)) / (cast(l_partkey as decimal(20,0)) + 0.00001)" +
+        " from lineitem") {
+      checkGlutenPlan[ProjectExecTransformer]
+    }
+  }
+
+  test("decimal remainder and pmod fall back") {
+    Seq(
+      "select cast(l_quantity as decimal(12,2)) % cast(l_orderkey as decimal(12,2)) from lineitem",
+      "select pmod(cast(l_quantity as decimal(12,2)), cast(l_orderkey as decimal(12,2)))" +
+        " from lineitem"
+    ).foreach {
+      query =>
+        runQueryAndCompare(query, noFallBack = false) {
+          df =>
+            assert(collect(df.queryExecution.executedPlan) {
+              case p: ProjectExecTransformer => p
+            }.isEmpty)
+        }
+    }
+  }
+
   // Gluten's checkAnswer accepts any two doubles within 1e-5 of each other, which is far
   // wider than the precision loss under test here: 214.4 and 214.39999999999998 compare
   // equal under it. Comparing the rendered values admits no tolerance at all, because
