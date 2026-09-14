@@ -20,7 +20,6 @@ import org.apache.gluten.backendsapi.BackendsApiManager
 import org.apache.gluten.columnarbatch.{ColumnarBatches, VeloxColumnarBatches}
 import org.apache.gluten.config.GlutenConfig
 import org.apache.gluten.expression.{ArrowProjection, ConverterUtils, ExpressionConverter, ExpressionMappings, ExpressionUtils, TransformerState}
-import org.apache.gluten.expression.ExpressionUtils
 import org.apache.gluten.extension.columnar.transition.Convention
 import org.apache.gluten.iterator.Iterators
 import org.apache.gluten.memory.arrow.alloc.ArrowBufferAllocators
