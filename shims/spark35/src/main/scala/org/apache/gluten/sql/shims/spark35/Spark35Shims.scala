@@ -19,6 +19,7 @@ package org.apache.gluten.sql.shims.spark35
 import org.apache.gluten.execution.PartitionedFileUtilShim
 import org.apache.gluten.expression.{ExpressionNames, Sig}
 import org.apache.gluten.sql.shims.SparkShims
+import org.apache.gluten.utils.ExceptionUtils
 
 import org.apache.spark._
 import org.apache.spark.sql.{AnalysisException, SparkSession}
@@ -97,7 +98,7 @@ class Spark35Shims extends SparkShims {
         f =>
           BucketingUtils
             .getBucketId(f.toPath.getName)
-            .getOrElse(throw invalidBucketFile(f.urlEncodedPath))
+            .getOrElse(throw ExceptionUtils.invalidBucketFile(f.urlEncodedPath))
       }
   }
 

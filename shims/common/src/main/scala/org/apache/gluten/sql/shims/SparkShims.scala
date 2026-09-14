@@ -122,14 +122,6 @@ trait SparkShims {
       partitionValues: InternalRow,
       metadata: Map[String, Any] = Map.empty): Seq[PartitionedFile]
 
-  // QueryExecutionErrors.invalidBucketFile is private[sql], so it cannot be reached from this
-  // package; build the same exception here. https://issues.apache.org/jira/browse/SPARK-40400
-  protected def invalidBucketFile(path: String): Throwable =
-    new SparkException(
-      errorClass = "INVALID_BUCKET_FILE",
-      messageParameters = Map("path" -> path),
-      cause = null)
-
   // For compatibility with Spark-3.5.
   def getAnalysisExceptionPlan(ae: AnalysisException): Option[LogicalPlan]
 

@@ -92,7 +92,7 @@ class Spark34Shims extends SparkShims {
         f =>
           BucketingUtils
             .getBucketId(f.toPath.getName)
-            .getOrElse(throw invalidBucketFile(f.urlEncodedPath))
+            .getOrElse(throw ExceptionUtils.invalidBucketFile(f.urlEncodedPath))
       }
   }
 
