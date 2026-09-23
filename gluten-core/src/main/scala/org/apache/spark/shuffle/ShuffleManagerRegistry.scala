@@ -32,16 +32,20 @@ class ShuffleManagerRegistry private[ShuffleManagerRegistry] {
   // will take higher precedence during lookup.
   def register(lookupKey: LookupKey, shuffleManagerClass: String): Unit = {
     val clazz = Utils.classForName(shuffleManagerClass)
+    // Check the ShuffleManager implementation first, so a class that is not a
+    // ShuffleManager at all (e.g. a non-ShuffleManager supertype of
+    // GlutenShuffleManager) is rejected with the accurate message rather than
+    // the recursion one.
+    require(
+      classOf[ShuffleManager].isAssignableFrom(clazz),
+      s"Shuffle manager class to register is not an implementation of Spark ShuffleManager: " +
+        s"$shuffleManagerClass"
+    )
     require(
       !clazz.isAssignableFrom(classOf[GlutenShuffleManager]) &&
         !classOf[GlutenShuffleManager].isAssignableFrom(clazz),
       "It's not allowed to register GlutenShuffleManager or its subtype / supertype " +
         "recursively"
-    )
-    require(
-      classOf[ShuffleManager].isAssignableFrom(clazz),
-      s"Shuffle manager class to register is not an implementation of Spark ShuffleManager: " +
-        s"$shuffleManagerClass"
     )
     require(
       !classDeDup.contains(shuffleManagerClass),
