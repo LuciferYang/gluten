@@ -58,9 +58,12 @@ class SparkDirectoryUtil private (val roots: Array[String]) extends Logging {
 
   def namespace(name: String): Namespace = {
     if (ROOTS.isEmpty) {
+      val configured =
+        if (roots.isEmpty) "none were configured"
+        else roots.map(r => s"'$r'").mkString("[", ", ", "]")
       throw new IllegalStateException(
-        s"No available Gluten local directory for namespace '$name': none of the configured " +
-          s"local directories ${roots.mkString(", ")} could be created")
+        s"No available Gluten local directory for namespace '$name': none of the " +
+          s"configured local directories could be created ($configured)")
     }
     NAMESPACE_MAPPING.computeIfAbsent(name, (name: String) => new Namespace(ROOTS, name))
   }
@@ -104,8 +107,11 @@ class Namespace(private val parents: Array[File], private val name: String) {
   }
 
   if (all.isEmpty) {
+    // all.isEmpty iff parents.isEmpty (map preserves length), so the actionable
+    // detail here is that no parent directories were provided.
     throw new IllegalStateException(
-      s"No available Gluten local directory in namespace '$name'")
+      s"No available Gluten local directory in namespace '$name': " +
+        s"no parent directories were provided")
   }
 
   private val cycleLooper = Stream.continually(all).flatten.toIterator
