@@ -30,7 +30,6 @@ import java.util.concurrent.atomic.AtomicLong
 
 import scala.collection.mutable
 import scala.compat.Platform.ConcurrentModificationException
-import scala.util.control.NonFatal
 
 object TaskResources extends TaskListener with Logging {
   // And open java assert mode to get memory stack
@@ -299,13 +298,6 @@ class TaskResourceRegistry extends Logging {
       case (_, resources) =>
         resources.toSeq.reverse.foreach {
           resource =>
-            // resourceName() is user code too; parse it with a fallback so it
-            // cannot re-abort the release loop.
-            val name =
-              try resource.resourceName()
-              catch {
-                case NonFatal(_) => s"resource@${System.identityHashCode(resource)}"
-              }
             try release(resource)
             catch {
               case e: Throwable =>
@@ -313,6 +305,14 @@ class TaskResourceRegistry extends Logging {
                 // registry uncleared; record the failure and rethrow it after the
                 // loop so callers still see the error.
                 failures += e
+                // resourceName() is user code too, so guard it with the same
+                // throwable range as release(): a failure building the log label
+                // must not abort the loop either.
+                val name =
+                  try resource.resourceName()
+                  catch {
+                    case _: Throwable => s"resource@${System.identityHashCode(resource)}"
+                  }
                 logError(s"Failed to release resource $name", e)
             }
         }
@@ -323,7 +323,9 @@ class TaskResourceRegistry extends Logging {
       failure =>
         // Keep the remaining failures attached; the logs are the only other
         // record and may be swallowed by the completion-listener machinery.
-        failures.tail.foreach(failure.addSuppressed)
+        // Skip entries identical to `failure` by reference: addSuppressed throws
+        // IllegalArgumentException on self-suppression.
+        failures.tail.filterNot(_ eq failure).foreach(failure.addSuppressed)
         throw failure
     }
   }
