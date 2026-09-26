@@ -41,11 +41,17 @@ class ShuffleManagerRegistry private[ShuffleManagerRegistry] {
       s"Shuffle manager class to register is not an implementation of Spark ShuffleManager: " +
         s"$shuffleManagerClass"
     )
+    // Reject GlutenShuffleManager itself, its subclasses, and any supertype it extends
+    // (such as the ShuffleManager interface): routing a shuffle to one of these would make
+    // GlutenShuffleManager recurse into itself.
+    val isGlutenShuffleManagerRelated =
+      clazz.isAssignableFrom(classOf[GlutenShuffleManager]) ||
+        classOf[GlutenShuffleManager].isAssignableFrom(clazz)
     require(
-      !clazz.isAssignableFrom(classOf[GlutenShuffleManager]) &&
-        !classOf[GlutenShuffleManager].isAssignableFrom(clazz),
-      "It's not allowed to register GlutenShuffleManager or its subtype / supertype " +
-        "recursively"
+      !isGlutenShuffleManagerRelated,
+      s"Cannot register GlutenShuffleManager, any of its subclasses, or a supertype such as " +
+        s"the ShuffleManager interface, because the router would then recurse into itself. " +
+        s"Offending class: $shuffleManagerClass"
     )
     require(
       !classDeDup.contains(shuffleManagerClass),
