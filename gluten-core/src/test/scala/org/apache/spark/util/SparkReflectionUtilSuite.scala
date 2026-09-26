@@ -24,6 +24,12 @@ class SparkReflectionUtilSuite extends AnyFunSuite {
     assert(SparkReflectionUtil.isClassPresent(classOf[String].getName))
   }
 
+  test("isClassPresent returns false for an absent class") {
+    // The ClassNotFoundException path: a name with no class on the classpath
+    // must read as "not present" rather than escaping the probe.
+    assert(!SparkReflectionUtil.isClassPresent("org.apache.gluten.DefinitelyDoesNotExist"))
+  }
+
   test("isClassPresent treats a failing static initializer as not present") {
     // The probe initializes the class, so the failing static initializer
     // surfaces as ExceptionInInitializerError (a LinkageError); a second
