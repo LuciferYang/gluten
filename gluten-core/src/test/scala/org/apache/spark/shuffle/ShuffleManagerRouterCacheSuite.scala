@@ -16,6 +16,8 @@
  */
 package org.apache.spark.shuffle
 
+import org.apache.gluten.exception.GlutenException
+
 import org.apache.spark.{ShuffleDependency, SparkConf, TaskContext}
 import org.apache.spark.internal.config.SHUFFLE_MANAGER
 import org.apache.spark.internal.config.UI.UI_ENABLED
@@ -72,7 +74,7 @@ class ShuffleManagerRouterCacheSuite extends SharedSparkSession {
     val resolver = gm.shuffleBlockResolver
 
     val neverRegistered = 987654322
-    val exception = intercept[Exception] {
+    val exception = intercept[GlutenException] {
       resolver.getBlockData(new ShuffleBlockId(neverRegistered, 0L, 0), None)
     }
     // getBlockData is the one public route that reads the cache without a
