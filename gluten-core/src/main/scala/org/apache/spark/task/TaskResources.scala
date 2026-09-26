@@ -303,9 +303,11 @@ class TaskResourceRegistry extends Logging {
     def safeResourceName(resource: TaskResource): String =
       try resource.resourceName()
       catch {
-        // resourceName() is user code too, so a failure building the log label
-        // must not abort the loop either.
-        case NonFatal(_) => s"resource@${System.identityHashCode(resource)}"
+        // Best-effort log label only: catch everything, including fatal errors, so a
+        // throwing resourceName() can never abort the release loop before the remaining
+        // resources are freed and the maps are cleared. Fatal errors from release()
+        // itself are still left to propagate (see the NonFatal handler below).
+        case _: Throwable => s"resource@${System.identityHashCode(resource)}"
       }
     priorityToResourcesMapping.toSeq.sortBy(-_._1).foreach {
       case (_, resources) =>
