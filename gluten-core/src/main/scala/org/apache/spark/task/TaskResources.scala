@@ -30,6 +30,7 @@ import java.util.concurrent.atomic.AtomicLong
 
 import scala.collection.mutable
 import scala.compat.Platform.ConcurrentModificationException
+import scala.util.control.NonFatal
 
 object TaskResources extends TaskListener with Logging {
   // And open java assert mode to get memory stack
@@ -227,8 +228,13 @@ object TaskResources extends TaskListener with Logging {
             try {
               currentTaskRegistries.releaseAll()
             } finally {
-              context.taskMetrics().incPeakExecutionMemory(registry.getSharedUsage().peak())
-              RESOURCE_REGISTRIES.remove(context)
+              // Removing the registry must happen even if the metrics update throws,
+              // otherwise the registry stays reachable and leaks across tasks.
+              try {
+                context.taskMetrics().incPeakExecutionMemory(registry.getSharedUsage().peak())
+              } finally {
+                RESOURCE_REGISTRIES.remove(context)
+              }
             }
           }
         }
@@ -294,26 +300,33 @@ class TaskResourceRegistry extends Logging {
   /** Release all managed resources according to priority and reversed order */
   private[task] def releaseAll(): Unit = lock {
     val failures = mutable.ArrayBuffer.empty[Throwable]
+    def safeResourceName(resource: TaskResource): String =
+      try resource.resourceName()
+      catch {
+        // resourceName() is user code too, so a failure building the log label
+        // must not abort the loop either.
+        case NonFatal(_) => s"resource@${System.identityHashCode(resource)}"
+      }
     priorityToResourcesMapping.toSeq.sortBy(-_._1).foreach {
       case (_, resources) =>
         resources.toSeq.reverse.foreach {
           resource =>
             try release(resource)
             catch {
-              case e: Throwable =>
+              case e: InterruptedException =>
+                // The catch cleared the interrupt status; restore it so task
+                // cancellation still propagates, then record and keep releasing so
+                // the remaining resources are freed and the registry is cleared.
+                Thread.currentThread().interrupt()
+                failures += e
+                logError(s"Interrupted while releasing resource ${safeResourceName(resource)}", e)
+              case NonFatal(e) =>
                 // One failing release must not skip the remaining ones or leave the
                 // registry uncleared; record the failure and rethrow it after the
-                // loop so callers still see the error.
+                // loop so callers still see the error. Fatal throwables are left to
+                // propagate immediately.
                 failures += e
-                // resourceName() is user code too, so guard it with the same
-                // throwable range as release(): a failure building the log label
-                // must not abort the loop either.
-                val name =
-                  try resource.resourceName()
-                  catch {
-                    case _: Throwable => s"resource@${System.identityHashCode(resource)}"
-                  }
-                logError(s"Failed to release resource $name", e)
+                logError(s"Failed to release resource ${safeResourceName(resource)}", e)
             }
         }
     }
