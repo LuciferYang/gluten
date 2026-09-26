@@ -95,6 +95,11 @@ object SparkDirectoryUtil extends Logging {
   }
 
   def get(): SparkDirectoryUtil = INSTANCE
+
+  // Visible for testing: build an isolated instance without touching the
+  // process-wide singleton, so tests do not depend on init() ordering.
+  private[util] def createForTesting(roots: Array[String]): SparkDirectoryUtil =
+    new SparkDirectoryUtil(roots)
 }
 
 class Namespace(private val parents: Array[File], private val name: String) {
@@ -114,14 +119,13 @@ class Namespace(private val parents: Array[File], private val name: String) {
         s"no parent directories were provided")
   }
 
-  private val cycleLooper = Stream.continually(all).flatten.toIterator
+  private var nextRootIndex = 0
 
   def mkChildDirRoundRobin(childDirName: String): File = synchronized {
-    // No guards needed here: the constructor rejects an empty parent list, and
-    // cycleLooper iterates Stream.continually(all) so it never runs out; subDir
-    // is built by resolving a name under an absolute root path, so its path is
-    // never empty.
-    val subDir = cycleLooper.next()
+    // Round-robin across the parent roots by index. The constructor rejects an
+    // empty parent list, so `all` is always non-empty here.
+    val subDir = all(nextRootIndex)
+    nextRootIndex = (nextRootIndex + 1) % all.length
     val path = Paths
       .get(subDir.getAbsolutePath)
       .resolve(childDirName)

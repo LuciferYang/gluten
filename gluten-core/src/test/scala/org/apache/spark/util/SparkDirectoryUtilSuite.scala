@@ -16,8 +16,6 @@
  */
 package org.apache.spark.util
 
-import org.apache.spark.SparkConf
-
 import org.scalatest.funsuite.AnyFunSuite
 
 import java.io.File
@@ -27,16 +25,13 @@ class SparkDirectoryUtilSuite extends AnyFunSuite {
 
   test("namespace fails fast naming the configured local dirs when none can be created") {
     // A regular file cannot host a local directory, so directory creation fails
-    // for every configured root.
+    // for every configured root. Build an isolated instance so the test does not
+    // depend on the process-wide singleton's init() ordering.
     val notADir = Files.createTempFile("gluten-not-a-dir", ".tmp")
     notADir.toFile.deleteOnExit()
-    val conf = new SparkConf()
-      .set("spark.master", "local[1]")
-      .set("spark.local.dirs", notADir.toAbsolutePath.toString)
-      .set("spark.local.dir", notADir.toAbsolutePath.toString)
-    SparkDirectoryUtil.init(conf)
+    val util = SparkDirectoryUtil.createForTesting(Array(notADir.toAbsolutePath.toString))
     val exception = intercept[IllegalStateException] {
-      SparkDirectoryUtil.get().namespace("test-namespace")
+      util.namespace("test-namespace")
     }
     assert(exception.getMessage.contains("test-namespace"))
     assert(exception.getMessage.contains(notADir.toAbsolutePath.toString))
@@ -54,7 +49,8 @@ class SparkDirectoryUtilSuite extends AnyFunSuite {
     try {
       val namespace = new Namespace(Array(root), "test-namespace")
       val child = namespace.mkChildDirRoundRobin("child-dir")
-      assert(child.exists)
+      assert(child.isDirectory)
+      assert(child.getCanonicalPath.startsWith(root.getCanonicalPath))
     } finally {
       Utils.deleteRecursively(root)
     }
