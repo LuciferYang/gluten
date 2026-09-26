@@ -24,6 +24,21 @@ import org.scalatest.funsuite.AnyFunSuite
 
 class IteratorV1Suite extends IteratorSuite {
   override protected def wrap[A](in: Iterator[A]): WrapperBuilder[A] = Iterators.wrap(V1, in)
+
+  test("Sub-millisecond read durations accumulate with carry-over instead of truncating") {
+    val reported = scala.collection.mutable.ArrayBuffer.empty[Long]
+    val accumulator = new IteratorsV1.NanosToMillisAccumulator(reported += _)
+    // Three 0.4ms reads: running totals 0.4ms, 0.8ms, 1.2ms. Converting each call to
+    // milliseconds on its own would report 0 for all three; the carry-over reports one
+    // whole millisecond only once the third read crosses 1ms.
+    accumulator.add(400000L)
+    accumulator.add(400000L)
+    accumulator.add(400000L)
+    assert(reported.toSeq == Seq(1L))
+    // 0.2ms remainder + 0.9ms = 1.1ms, so another whole millisecond is reported.
+    accumulator.add(900000L)
+    assert(reported.toSeq == Seq(1L, 1L))
+  }
 }
 
 abstract class IteratorSuite extends AnyFunSuite {
@@ -37,25 +52,6 @@ abstract class IteratorSuite extends AnyFunSuite {
     assertResult(strings) {
       wrapped.toArray
     }
-  }
-
-  test("Read time accumulation does not lose sub-millisecond reads") {
-    var totalMillis = 0L
-    val elementCount = 300000
-    val itr = Array.range(0, elementCount).iterator
-    val wrapped = wrap(itr)
-      .collectReadMillis(millis => totalMillis += millis)
-      .create()
-    var consumed = 0
-    while (wrapped.hasNext) {
-      wrapped.next()
-      consumed += 1
-    }
-    assert(consumed == elementCount)
-    // Each individual read takes well under a millisecond; converting per call
-    // used to truncate every duration to zero. The accumulated total over
-    // elementCount reads must be positive.
-    assert(totalMillis > 0L)
   }
 
   test("Complete iterator") {
