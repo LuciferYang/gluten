@@ -16,7 +16,9 @@
  */
 package org.apache.spark.util
 
-object SparkReflectionUtil {
+import org.apache.spark.internal.Logging
+
+object SparkReflectionUtil extends Logging {
   def getSimpleClassName(cls: Class[_]): String = {
     Utils.getSimpleName(cls)
   }
@@ -35,10 +37,12 @@ object SparkReflectionUtil {
     } catch {
       case _: ClassNotFoundException =>
         false
-      case _: LinkageError =>
-        // The class is present but cannot be linked, e.g. an optional
-        // dependency of a different version is missing a supertype; for the
-        // caller this is equivalent to "not present".
+      case e @ (_: NoClassDefFoundError | _: ExceptionInInitializerError) =>
+        // Present but unusable (a version-skewed optional dependency missing a supertype,
+        // or a failing static initializer): treat as not present, but log the cause so the
+        // skew is diagnosable. Broader linkage errors (VerifyError, UnsupportedClassVersionError,
+        // ...) are left to propagate, since they signal a genuinely broken build.
+        logWarning(s"Class $className is present but could not be linked; treating it as absent", e)
         false
     }
   }
