@@ -229,9 +229,14 @@ object TaskResources extends TaskListener with Logging {
               currentTaskRegistries.releaseAll()
             } finally {
               // Removing the registry must happen even if the metrics update throws,
-              // otherwise the registry stays reachable and leaks across tasks.
+              // otherwise the registry stays reachable and leaks across tasks. The metrics
+              // update itself is best-effort: catch it here so a metrics failure cannot
+              // replace (mask) a releaseAll failure propagating from the outer try.
               try {
                 context.taskMetrics().incPeakExecutionMemory(registry.getSharedUsage().peak())
+              } catch {
+                case NonFatal(e) =>
+                  logWarning("Failed to record peak execution memory", e)
               } finally {
                 RESOURCE_REGISTRIES.remove(context)
               }
