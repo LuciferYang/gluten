@@ -22,27 +22,40 @@ import org.apache.spark.task.TaskResources
 
 import org.scalatest.funsuite.AnyFunSuite
 
+import java.util.concurrent.TimeUnit
+
 class IteratorV1Suite extends IteratorSuite {
   override protected def wrap[A](in: Iterator[A]): WrapperBuilder[A] = Iterators.wrap(V1, in)
-
-  test("Sub-millisecond read durations accumulate with carry-over instead of truncating") {
-    val reported = scala.collection.mutable.ArrayBuffer.empty[Long]
-    val accumulator = new IteratorsV1.NanosToMillisAccumulator(reported += _)
-    // Three 0.4ms reads: running totals 0.4ms, 0.8ms, 1.2ms. Converting each call to
-    // milliseconds on its own would report 0 for all three; the carry-over reports one
-    // whole millisecond only once the third read crosses 1ms.
-    accumulator.add(400000L)
-    accumulator.add(400000L)
-    accumulator.add(400000L)
-    assert(reported.toSeq == Seq(1L))
-    // 0.2ms remainder + 0.9ms = 1.1ms, so another whole millisecond is reported.
-    accumulator.add(900000L)
-    assert(reported.toSeq == Seq(1L, 1L))
-  }
 }
 
 abstract class IteratorSuite extends AnyFunSuite {
   protected def wrap[A](in: Iterator[A]): WrapperBuilder[A]
+
+  test("Read time is reported in nanoseconds per read") {
+    val reported = scala.collection.mutable.ArrayBuffer.empty[Long]
+    // Each next() sleeps at least 1ms, so its reported duration has a hard lower bound
+    // that does not depend on the clock's resolution.
+    val slow = Iterator(1, 2, 3).map {
+      i =>
+        Thread.sleep(1)
+        i
+    }
+    val wrapped = wrap(slow)
+      .collectReadNanos(reported += _)
+      .create()
+    var reads = List.empty[Int]
+    while (wrapped.hasNext) {
+      reads = wrapped.next() :: reads
+    }
+    assert(reads.reverse == List(1, 2, 3))
+    // Four hasNext calls and three next calls, each reported once.
+    assert(reported.size == 7)
+    // The next() reports are at odd positions. A millisecond unit would report about 1
+    // for each; nanoseconds report at least 1,000,000.
+    val nextReports = reported.zipWithIndex.collect { case (n, i) if i % 2 == 1 => n }
+    assert(nextReports.size == 3)
+    assert(nextReports.forall(_ >= TimeUnit.MILLISECONDS.toNanos(1)), reported)
+  }
 
   test("Trivial wrapping") {
     val strings = Array[String]("one", "two", "three")
