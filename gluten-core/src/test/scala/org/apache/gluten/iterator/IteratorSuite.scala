@@ -33,12 +33,19 @@ abstract class IteratorSuite extends AnyFunSuite {
 
   test("Read time is reported in nanoseconds per read") {
     val reported = scala.collection.mutable.ArrayBuffer.empty[Long]
-    // Each next() sleeps at least 1ms, so its reported duration has a hard lower bound
-    // that does not depend on the clock's resolution.
-    val slow = Iterator(1, 2, 3).map {
-      i =>
+    // Both hasNext and next sleep at least 1ms, so every reported duration has a hard
+    // lower bound that does not depend on the clock's resolution.
+    val slow = new Iterator[Int] {
+      private var i = 0
+      override def hasNext: Boolean = {
         Thread.sleep(1)
+        i < 3
+      }
+      override def next(): Int = {
+        Thread.sleep(1)
+        i += 1
         i
+      }
     }
     val wrapped = wrap(slow)
       .collectReadNanos(reported += _)
@@ -48,13 +55,10 @@ abstract class IteratorSuite extends AnyFunSuite {
       reads = wrapped.next() :: reads
     }
     assert(reads.reverse == List(1, 2, 3))
-    // Four hasNext calls and three next calls, each reported once.
+    // Four hasNext calls and three next calls, each reported once. A millisecond unit
+    // would report about 1 for each; nanoseconds report at least 1,000,000.
     assert(reported.size == 7)
-    // The next() reports are at odd positions. A millisecond unit would report about 1
-    // for each; nanoseconds report at least 1,000,000.
-    val nextReports = reported.zipWithIndex.collect { case (n, i) if i % 2 == 1 => n }
-    assert(nextReports.size == 3)
-    assert(nextReports.forall(_ >= TimeUnit.MILLISECONDS.toNanos(1)), reported)
+    assert(reported.forall(_ >= TimeUnit.MILLISECONDS.toNanos(1)), reported)
   }
 
   test("Trivial wrapping") {

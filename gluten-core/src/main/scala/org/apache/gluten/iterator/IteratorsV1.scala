@@ -115,8 +115,8 @@ object IteratorsV1 {
     }
   }
 
-  // Reports each read in nanoseconds. Converting every call to milliseconds on its own would
-  // truncate the typical sub-millisecond read to zero.
+  // Reports each read's duration in nanoseconds. Converting each read to milliseconds would
+  // truncate any read shorter than one millisecond to zero.
   private class ReadTimeAccumulator[A](in: Iterator[A], onAdded: Long => Unit) extends Iterator[A] {
 
     override def hasNext: Boolean = {
