@@ -229,6 +229,9 @@ object TaskResources extends TaskListener with Logging {
           // do native teardown (ms-scale), and holding the lock across them serializes every
           // other task's completion and registration. The registry is per-task with its own
           // internal lock, so the map is the only state that needs the global lock.
+          // Take the usage recorder first: releaseAll marks the registry released, after
+          // which the registry rejects every call, getSharedUsage included.
+          val sharedUsage = currentTaskRegistries.getSharedUsage()
           try {
             currentTaskRegistries.releaseAll()
           } finally {
@@ -238,7 +241,7 @@ object TaskResources extends TaskListener with Logging {
             try {
               context
                 .taskMetrics()
-                .incPeakExecutionMemory(currentTaskRegistries.getSharedUsage().peak())
+                .incPeakExecutionMemory(sharedUsage.peak())
             } catch {
               case NonFatal(e) =>
                 logWarning("Failed to record peak execution memory", e)
@@ -277,8 +280,15 @@ class TaskResourceRegistry extends Logging {
     mutable.Map.empty[Int, mutable.LinkedHashSet[TaskResource]]
 
   private var exclusiveLockAcquired: Boolean = false
+  // Set once releaseAll has run. The completion listener releases outside the global
+  // registry lock, so a thread that fetched this registry before the map entry is
+  // removed must fail here rather than register a resource nothing will release.
+  private var released: Boolean = false
   private def lock[T](body: => T): T = {
     synchronized {
+      if (released) {
+        throw new IllegalStateException("TaskResourceRegistry is already released")
+      }
       if (exclusiveLockAcquired) {
         throw new ConcurrentModificationException
       }
@@ -348,6 +358,7 @@ class TaskResourceRegistry extends Logging {
     }
     priorityToResourcesMapping.clear()
     resources.clear()
+    released = true
     failures.headOption.foreach {
       failure =>
         // Keep the remaining failures attached; the logs are the only other

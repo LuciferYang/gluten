@@ -16,6 +16,7 @@
  */
 package org.apache.gluten.task
 
+import org.apache.spark.TaskContext
 import org.apache.spark.memory.{MemoryConsumer, MemoryMode}
 import org.apache.spark.sql.catalyst.plans.SQLHelper
 import org.apache.spark.sql.internal.SQLConf
@@ -168,5 +169,48 @@ class TaskResourceSuite extends AnyFunSuite with SQLHelper {
     // misleading "blocked" message below.
     starterFailure.foreach(t => throw t)
     assert(concurrentTaskStarted, "concurrent task start was blocked by the release pass")
+  }
+
+  test("Run unsafe - registering into a released registry fails") {
+    // A thread sharing the task's TaskContext can fetch the registry while the release
+    // pass runs outside the global lock. Its registration must fail loudly instead of
+    // landing in the cleared registry, where nothing would ever release it.
+    var lateFailure: Option[Throwable] = None
+    var lateReleased = false
+    var child: Thread = null
+    TaskResources.runUnsafe {
+      val tc = TaskContext.get()
+      TaskResources.addResource(
+        UUID.randomUUID().toString,
+        new TaskResource {
+          override def release(): Unit = {
+            child = new Thread(
+              () => {
+                SparkTaskUtil.setTaskContext(tc)
+                try {
+                  TaskResources.addResource(
+                    UUID.randomUUID().toString,
+                    new TaskResource {
+                      override def release(): Unit = lateReleased = true
+                      override def resourceName(): String = "late resource"
+                    })
+                } catch {
+                  case NonFatal(t) => lateFailure = Some(t)
+                } finally {
+                  SparkTaskUtil.unsetTaskContext()
+                }
+              })
+            child.start()
+            // Simulate a slow native teardown.
+            Thread.sleep(500)
+          }
+          override def resourceName(): String = "slow releaser"
+        }
+      )
+    }
+    child.join(30000)
+    assert(!child.isAlive)
+    assert(!lateReleased)
+    assert(lateFailure.exists(_.isInstanceOf[IllegalStateException]))
   }
 }
