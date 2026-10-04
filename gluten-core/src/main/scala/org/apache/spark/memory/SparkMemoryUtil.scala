@@ -52,16 +52,14 @@ object SparkMemoryUtil {
 
   // We assume storage memory can be fully transferred to execution memory so far
   def getCurrentAvailableOffHeapMemory: Long = {
-    val env = SparkEnv.get
-    val mm = env.memoryManager
+    val mm = SparkEnv.get.memoryManager
     // With dynamic off-heap sizing enabled, Gluten's global reservations are
     // charged to the ON-heap pools (see GlobalOffHeapMemoryTarget), so the
-    // available figure must be read from the same pools to stay meaningful;
-    // reading the off-heap pools would ignore every reservation.
-    val dynamicSizingEnabled =
-      env.conf.getBoolean(GlutenCoreConfig.DYNAMIC_OFFHEAP_SIZING_ENABLED.key, false)
+    // available figure must be read from the same pools. Read the flag the same
+    // way GlobalOffHeapMemoryTarget.mode does, so the two cannot pick different
+    // pool families.
     val (smp, emp) =
-      if (dynamicSizingEnabled) {
+      if (GlutenCoreConfig.get.dynamicOffHeapSizingEnabled) {
         (
           onHeapSmpField.get(mm).asInstanceOf[StorageMemoryPool],
           onHeapEmpField.get(mm).asInstanceOf[ExecutionMemoryPool])
