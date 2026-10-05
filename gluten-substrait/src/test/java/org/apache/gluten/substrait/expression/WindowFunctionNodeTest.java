@@ -57,7 +57,8 @@ public class WindowFunctionNodeTest {
     for (Literal bound : bounds) {
       WindowFunctionNode node = nodeWithLowerBound(bound);
       GlutenNotSupportException e = assertThrows(GlutenNotSupportException.class, node::toProtobuf);
-      assertTrue(e.getMessage(), e.getMessage().contains(bound.toString()));
+      String expected = bound.value() + " (" + bound.dataType().simpleString() + ")";
+      assertTrue(e.getMessage(), e.getMessage().endsWith(expected));
     }
   }
 

@@ -82,7 +82,11 @@ public class WindowFunctionNode implements Serializable {
       return Long.parseLong(raw);
     } catch (NumberFormatException e) {
       throw new GlutenNotSupportException(
-          "Window frame bound is not a long offset: " + raw + " (" + boundType.sql() + ")");
+          "Window frame bound is not a long offset: "
+              + raw
+              + " ("
+              + boundType.dataType().simpleString()
+              + ")");
     }
   }
 
