@@ -73,7 +73,7 @@ public class WindowFunctionNode implements Serializable {
     this.originalInputAttributes = originalInputAttributes;
   }
 
-  // Frame offsets are integral. A non-integral bound, such as RANGE BETWEEN 1.5 PRECEDING on a
+  // A bound that does not parse as a long, such as the -1.50 of RANGE BETWEEN 1.5 PRECEDING on a
   // decimal key, throws GlutenNotSupportException so the window falls back; a
   // NumberFormatException would fail the query instead.
   private static Long parseOffset(org.apache.spark.sql.catalyst.expressions.Expression boundType) {
@@ -82,7 +82,7 @@ public class WindowFunctionNode implements Serializable {
       return Long.parseLong(raw);
     } catch (NumberFormatException e) {
       throw new GlutenNotSupportException(
-          "Window frame bound is not an integral offset: " + raw + " (" + boundType.sql() + ")");
+          "Window frame bound is not a long offset: " + raw + " (" + boundType.sql() + ")");
     }
   }
 

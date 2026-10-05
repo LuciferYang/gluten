@@ -223,15 +223,9 @@ trait PullOutProjectHelper {
     case _ => false
   }
 
-  protected def supportPreComputeRangeFrame(sortOrders: Seq[SortOrder]): Boolean = {
-    sortOrders.forall {
-      _.dataType match {
-        case ByteType | ShortType | IntegerType | LongType | DateType => true
-        // Only integral type & date type are supported for sort key with Range Frame
-        case _ => false
-      }
-    }
-  }
+  // Only integral and date sort keys are supported for a range frame.
+  protected def supportPreComputeRangeFrame(sortOrders: Seq[SortOrder]): Boolean =
+    sortOrders.forall(o => isIntegralType(o.dataType) || o.dataType == DateType)
 
   /**
    * Convert DateType to IntType for orderSpec if needPreComputeRangeFrame, because spark's frame

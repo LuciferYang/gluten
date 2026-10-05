@@ -185,5 +185,16 @@ class VeloxWindowExpressionSuite extends WholeStageTransformerSuite {
           checkSparkPlan[WindowExec]
         }
     }
+    // The integral bound triggers the pre-compute rewrite for the whole operator; the interval
+    // bound in the same operator must still make it fall back.
+    runQueryAndCompare(
+      "select l_commitdate, " +
+        "count(*) over (order by l_commitdate RANGE BETWEEN 1 PRECEDING AND CURRENT ROW), " +
+        "count(*) over (order by l_commitdate " +
+        "RANGE BETWEEN INTERVAL '1' MONTH PRECEDING AND CURRENT ROW) from lineitem",
+      noFallBack = false
+    ) {
+      checkSparkPlan[WindowExec]
+    }
   }
 }
