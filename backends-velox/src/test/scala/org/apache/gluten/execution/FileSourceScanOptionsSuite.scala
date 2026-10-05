@@ -62,6 +62,8 @@ class FileSourceScanOptionsSuite extends VeloxWholeStageTransformerSuite {
 
   test("sep wins over delimiter when both are set, like Spark") {
     assert(scanProperties(Map("sep" -> "\t", "delimiter" -> ";"))("field_delimiter") == "\t")
+    assert(scanProperties(Map("delimiter" -> ";"))("field_delimiter") == ";")
+    assert(scanProperties(Map.empty)("field_delimiter") == ",")
   }
 
   test("a field delimiter the native reader cannot split on falls back") {
