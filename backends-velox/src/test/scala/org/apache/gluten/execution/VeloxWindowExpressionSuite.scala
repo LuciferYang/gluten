@@ -20,6 +20,7 @@ import org.apache.gluten.config.VeloxConfig
 
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.Row
+import org.apache.spark.sql.execution.window.WindowExec
 import org.apache.spark.sql.types._
 
 class VeloxWindowExpressionSuite extends WholeStageTransformerSuite {
@@ -169,6 +170,20 @@ class VeloxWindowExpressionSuite extends WholeStageTransformerSuite {
           checkGlutenPlan[HashAggregateExecTransformer]
         }
       }
+    }
+  }
+
+  test("range frame with an interval bound on a date key falls back") {
+    Seq(
+      "RANGE BETWEEN INTERVAL '1' MONTH PRECEDING AND CURRENT ROW",
+      "RANGE BETWEEN CURRENT ROW AND INTERVAL '1' YEAR FOLLOWING"
+    ).foreach {
+      frame =>
+        runQueryAndCompare(
+          s"select l_commitdate, count(*) over (order by l_commitdate $frame) from lineitem",
+          noFallBack = false) {
+          checkSparkPlan[WindowExec]
+        }
     }
   }
 }

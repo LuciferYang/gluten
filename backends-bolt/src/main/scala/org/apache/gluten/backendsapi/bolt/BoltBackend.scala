@@ -444,6 +444,12 @@ object BoltBackendSettings extends BackendSettingsApi {
               bound match {
                 case _: SpecialFrameBoundary =>
                 case e if e.foldable =>
+                  e.dataType match {
+                    case ByteType | ShortType | IntegerType | LongType =>
+                    case other =>
+                      throw new GlutenNotSupportException(
+                        s"Only integral literal bounds are supported for a RANGE frame, got $other")
+                  }
                   orderSpec.foreach(
                     order =>
                       order.direction match {
