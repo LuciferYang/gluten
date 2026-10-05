@@ -645,18 +645,22 @@ class GlutenClickHouseTPCHSaltNullParquetSuite
 
   test("window range with a non-integral bound falls back") {
     // Spark casts the bound to the decimal key type, so both arrive as non-integral literals.
-    Seq("1.5 preceding", "10 preceding").foreach {
-      bound =>
-        val sql =
-          s"""
-             |select n_nationkey, n_regionkey,
-             |  count(*) over (partition by n_regionkey
-             |    order by cast(n_nationkey as decimal(10, 2))
-             |    range between $bound and current row) as cnt
-             |from nation
-             |order by n_regionkey, n_nationkey
-             |""".stripMargin
-        runQueryAndCompare(sql, noFallBack = false)(checkSparkPlan[WindowExec])
+    // The bound is converted when the plan is serialized, which happens during validation only
+    // with native validation on; this suite turns it off by default.
+    withSQLConf(GlutenConfig.NATIVE_VALIDATION_ENABLED.key -> "true") {
+      Seq("1.5 preceding", "10 preceding").foreach {
+        bound =>
+          val sql =
+            s"""
+               |select n_nationkey, n_regionkey,
+               |  count(*) over (partition by n_regionkey
+               |    order by cast(n_nationkey as decimal(10, 2))
+               |    range between $bound and current row) as cnt
+               |from nation
+               |order by n_regionkey, n_nationkey
+               |""".stripMargin
+          runQueryAndCompare(sql, noFallBack = false)(checkSparkPlan[WindowExec])
+      }
     }
   }
 
