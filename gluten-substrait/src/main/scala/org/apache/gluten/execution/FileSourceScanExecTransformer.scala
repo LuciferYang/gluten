@@ -191,19 +191,29 @@ abstract class FileSourceScanExecTransformerBase(
         s"Unsupported matching schema column names " +
           s"by field ids in native scan.")
     }
-    if (fileFormat == ReadFileFormat.TextReadFormat && !csvFieldDelimiter.exists(isSingleAscii)) {
-      return ValidationResult.failed(
-        "Only a single ASCII character field delimiter is supported in native text scan.")
+    if (fileFormat == ReadFileFormat.TextReadFormat) {
+      csvFieldDelimiter match {
+        case Some(d) if isSingleAscii(d) =>
+        case Some(d) =>
+          return ValidationResult.failed(
+            "Only a single ASCII character field delimiter is supported in native text scan, " +
+              s"got '$d'.")
+        case None =>
+          return ValidationResult.failed(
+            s"Cannot decode the CSV field delimiter '$rawCsvFieldDelimiter'.")
+      }
     }
     super.doValidateInternal()
   }
 
-  // The delimiter Spark's CSVOptions reads with: `sep` wins over the legacy `delimiter` alias,
-  // and escapes such as `\t` are decoded. None when it cannot be decoded.
+  // Spark's CSVOptions takes `sep` over the legacy `delimiter` alias.
+  private def rawCsvFieldDelimiter: String =
+    relation.options.getOrElse("sep", relation.options.getOrElse("delimiter", ","))
+
+  // The delimiter after decoding escapes such as `\t`, as CSVOptions does. None when it cannot be
+  // decoded, for which Spark raises an error.
   private def csvFieldDelimiter: Option[String] =
-    Try(
-      CSVExprUtils.toDelimiterStr(
-        relation.options.getOrElse("sep", relation.options.getOrElse("delimiter", ",")))).toOption
+    Try(CSVExprUtils.toDelimiterStr(rawCsvFieldDelimiter)).toOption
 
   // The native reader splits on the first byte of the delimiter.
   private def isSingleAscii(delimiter: String): Boolean =

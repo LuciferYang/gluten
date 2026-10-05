@@ -74,6 +74,10 @@ class FileSourceScanOptionsSuite extends VeloxWholeStageTransformerSuite {
         assert(!result.ok())
         assert(result.reason().contains("single ASCII character field delimiter"), result.reason())
     }
+    // Spark rejects a null delimiter rather than defaulting to a comma, so this falls back too.
+    val result = scan(Map("sep" -> null)).doValidate()
+    assert(!result.ok())
+    assert(result.reason().contains("Cannot decode the CSV field delimiter"), result.reason())
   }
 
   test("header accepts case-insensitive booleans like Spark") {
