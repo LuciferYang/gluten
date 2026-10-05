@@ -452,7 +452,8 @@ object VeloxBackendSettings extends BackendSettingsApi {
                     case ByteType | ShortType | IntegerType | LongType =>
                     case other =>
                       throw new GlutenNotSupportException(
-                        s"Only integral literal bounds are supported for a RANGE frame, got $other")
+                        "Only integral literal bounds are supported for a RANGE frame, " +
+                          s"got ${other.simpleString}")
                   }
                 case _ =>
               }

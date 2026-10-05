@@ -207,8 +207,8 @@ trait PullOutProjectHelper {
     (needPreComputeRangeFrameBoundary(swf.lower) || needPreComputeRangeFrameBoundary(swf.upper))
   }
 
-  // The pre-computed boundary is the order key plus the bound, so the bound has to be an integral
-  // value too. A date key with an interval bound, for one, stays as it is and falls back.
+  // The pre-computed boundary is the order key plus the bound, so the bound has to be of an
+  // integral type too. A date key with an interval bound, for one, stays as it is and falls back.
   private def canPreComputeRangeFrame(
       swf: SpecifiedWindowFrame,
       sortOrders: Seq[SortOrder]): Boolean = {
