@@ -63,6 +63,13 @@ public class WindowFunctionNodeTest {
   }
 
   @Test
+  public void nullBoundFailsValidation() {
+    WindowFunctionNode node = nodeWithLowerBound(Literal.create(null, DataTypes.LongType));
+    GlutenNotSupportException e = assertThrows(GlutenNotSupportException.class, node::toProtobuf);
+    assertTrue(e.getMessage(), e.getMessage().endsWith("null (bigint)"));
+  }
+
+  @Test
   public void integralBoundConverts() {
     assertNotNull(nodeWithLowerBound(Literal.create(-3L, DataTypes.LongType)).toProtobuf());
   }
