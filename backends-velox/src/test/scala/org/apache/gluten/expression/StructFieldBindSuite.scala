@@ -21,6 +21,7 @@ import org.apache.gluten.execution.{ProjectExecTransformer, VeloxWholeStageTrans
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.catalyst.expressions.{AttributeReference, Expression}
 import org.apache.spark.sql.catalyst.expressions.GetStructField
+import org.apache.spark.sql.execution.ProjectExec
 import org.apache.spark.sql.types.{IntegerType, LongType, StringType, StructField, StructType}
 
 class StructFieldBindSuite extends VeloxWholeStageTransformerSuite {
@@ -135,6 +136,25 @@ class StructFieldBindSuite extends VeloxWholeStageTransformerSuite {
             assertStructReadOffloaded
           }
         }
+    }
+  }
+
+  test("struct fields with duplicate names fall back when the input struct type differs") {
+    // The empty branch makes the first field of the union's struct nullable. Once the empty branch
+    // is removed, the projection reads the other branch's struct under the same exprId but with a
+    // different type, so fields are looked up by name, and two fields named a must fall back.
+    runQueryAndCompare(
+      "select s.* from (" +
+        "select /*+ REPARTITION(2) */ named_struct('a', id, 'a', id * 10) as s from range(5) " +
+        "union all " +
+        "select named_struct('a', cast(null as bigint), 'a', id) as s from range(5) where false)",
+      noFallBack = false
+    ) {
+      df =>
+        val plan = df.queryExecution.executedPlan
+        assert(
+          collect(plan) { case p: ProjectExec if readsStructField(p.projectList) => p }.nonEmpty,
+          plan)
     }
   }
 
