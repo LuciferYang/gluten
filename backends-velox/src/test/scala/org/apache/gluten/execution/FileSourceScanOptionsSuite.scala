@@ -56,8 +56,10 @@ class FileSourceScanOptionsSuite extends VeloxWholeStageTransformerSuite {
 
   test("csv sep option maps to the native field delimiter") {
     assert(scanProperties(Map("sep" -> "\t"))("field_delimiter") == "\t")
-    // Spark decodes an escaped delimiter, so a backslash followed by t is a tab.
+    // Spark decodes an escaped delimiter, so a backslash followed by t is a tab, and two
+    // backslashes are one.
     assert(scanProperties(Map("sep" -> "\\t"))("field_delimiter") == "\t")
+    assert(scanProperties(Map("sep" -> "\\\\"))("field_delimiter") == "\\")
   }
 
   test("sep wins over delimiter when both are set, like Spark") {
