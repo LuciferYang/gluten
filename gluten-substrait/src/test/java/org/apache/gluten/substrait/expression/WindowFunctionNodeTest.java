@@ -86,6 +86,23 @@ public class WindowFunctionNodeTest {
   }
 
   @Test
+  public void rangeLiteralBoundCheckRejectsWhatCannotConvert() {
+    // The Velox and Bolt check accepts an integral bound only if it converts, so a null one falls
+    // back even with native validation off.
+    assertThrows(
+        GlutenNotSupportException.class,
+        () ->
+            WindowFunctionsBuilder.checkRangeFrameLiteralBound(
+                Literal.create(null, DataTypes.LongType)));
+    assertThrows(
+        GlutenNotSupportException.class,
+        () ->
+            WindowFunctionsBuilder.checkRangeFrameLiteralBound(
+                Literal.create(new BigDecimal("-10"), DataTypes.createDecimalType(10, 0))));
+    WindowFunctionsBuilder.checkRangeFrameLiteralBound(Literal.create(-3L, DataTypes.LongType));
+  }
+
+  @Test
   public void integralBoundConverts() {
     assertNotNull(nodeWithLowerBound(Literal.create(-3L, DataTypes.LongType)).toProtobuf());
   }

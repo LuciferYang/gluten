@@ -76,11 +76,13 @@ object WindowFunctionsBuilder {
   }
 
   // A literal RANGE frame bound is offloaded as a pre-computed boundary column, which only works
-  // for an integral bound; any other literal bound makes the window fall back.
+  // for an integral bound that converts to an offset; any other literal bound makes the window
+  // fall back.
   def checkRangeFrameLiteralBound(bound: Expression): Unit = bound.dataType match {
-    case ByteType | ShortType | IntegerType | LongType =>
+    case ByteType | ShortType | IntegerType | LongType if isLongOffset(bound) =>
     case other =>
       throw new GlutenNotSupportException(
-        s"Only integral literal bounds are supported for a RANGE frame, got ${other.simpleString}")
+        s"Only integral literal bounds are supported for a RANGE frame, got ${bound.sql}: " +
+          other.simpleString)
   }
 }
