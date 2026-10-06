@@ -462,13 +462,7 @@ object BoltBackendSettings extends BackendSettingsApi {
                             "Only integral type & date type are" +
                               " supported for sort key when literal bound type is used!")
                       })
-                  e.dataType match {
-                    case ByteType | ShortType | IntegerType | LongType =>
-                    case other =>
-                      throw new GlutenNotSupportException(
-                        "Only integral literal bounds are supported for a RANGE frame, " +
-                          s"got ${other.simpleString}")
-                  }
+                  WindowFunctionsBuilder.checkRangeFrameLiteralBound(e)
                 case _ =>
               }
             }

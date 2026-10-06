@@ -22,6 +22,7 @@ import org.apache.gluten.expression.ExpressionNames.{LAG, LEAD}
 import org.apache.gluten.substrait.SubstraitContext
 
 import org.apache.spark.sql.catalyst.expressions.{EmptyRow, Expression, Lag, Lead, WindowExpression, WindowFunction}
+import org.apache.spark.sql.types.{ByteType, IntegerType, LongType, ShortType}
 
 import scala.util.control.Breaks.{break, breakable}
 
@@ -62,5 +63,14 @@ object WindowFunctionsBuilder {
         }
         w
     }
+  }
+
+  // A literal RANGE frame bound is offloaded as a pre-computed boundary column, which only works
+  // for an integral bound; any other literal bound makes the window fall back.
+  def checkRangeFrameLiteralBound(bound: Expression): Unit = bound.dataType match {
+    case ByteType | ShortType | IntegerType | LongType =>
+    case other =>
+      throw new GlutenNotSupportException(
+        s"Only integral literal bounds are supported for a RANGE frame, got ${other.simpleString}")
   }
 }
