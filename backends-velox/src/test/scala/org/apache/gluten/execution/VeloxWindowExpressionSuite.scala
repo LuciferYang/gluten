@@ -173,6 +173,17 @@ class VeloxWindowExpressionSuite extends WholeStageTransformerSuite {
     }
   }
 
+  testWithMinSparkVersion("range frame with a day interval bound on a date key falls back", "4.0") {
+    // Spark 4.0 also accepts a day-time interval bound on a date key.
+    runQueryAndCompare(
+      "select l_commitdate, count(*) over (order by l_commitdate " +
+        "RANGE BETWEEN INTERVAL '1' DAY PRECEDING AND CURRENT ROW) from lineitem",
+      noFallBack = false
+    ) {
+      checkSparkPlan[WindowExec]
+    }
+  }
+
   test("range frame with an interval bound on a date key falls back") {
     Seq(
       "RANGE BETWEEN INTERVAL '1' MONTH PRECEDING AND CURRENT ROW",
