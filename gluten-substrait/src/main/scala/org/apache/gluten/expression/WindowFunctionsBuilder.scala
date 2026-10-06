@@ -22,8 +22,10 @@ import org.apache.gluten.expression.ExpressionNames.{LAG, LEAD}
 import org.apache.gluten.substrait.SubstraitContext
 
 import org.apache.spark.sql.catalyst.expressions.{EmptyRow, Expression, Lag, Lead, WindowExpression, WindowFunction}
+import org.apache.spark.sql.catalyst.expressions.SpecialFrameBoundary
 import org.apache.spark.sql.types.{ByteType, IntegerType, LongType, ShortType}
 
+import scala.util.Try
 import scala.util.control.Breaks.{break, breakable}
 
 object WindowFunctionsBuilder {
@@ -63,6 +65,14 @@ object WindowFunctionsBuilder {
         }
         w
     }
+  }
+
+  // Whether WindowFunctionNode can convert the frame bound: a special or non-foldable bound, or
+  // a literal that parses as the long offset it sends to the native engine.
+  def isLongOffset(bound: Expression): Boolean = bound match {
+    case _: SpecialFrameBoundary => true
+    case b if !b.foldable => true
+    case b => Try(java.lang.Long.parseLong(String.valueOf(b.eval(EmptyRow)))).isSuccess
   }
 
   // A literal RANGE frame bound is offloaded as a pre-computed boundary column, which only works

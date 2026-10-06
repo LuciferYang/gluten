@@ -17,8 +17,10 @@
 package org.apache.gluten.substrait.expression;
 
 import org.apache.gluten.exception.GlutenNotSupportException;
+import org.apache.gluten.expression.WindowFunctionsBuilder;
 import org.apache.gluten.substrait.type.TypeBuilder;
 
+import org.apache.spark.sql.catalyst.expressions.CurrentRow$;
 import org.apache.spark.sql.catalyst.expressions.Literal;
 import org.apache.spark.sql.types.DataTypes;
 import org.junit.Test;
@@ -26,6 +28,7 @@ import org.junit.Test;
 import java.math.BigDecimal;
 import java.util.Collections;
 
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
@@ -67,6 +70,19 @@ public class WindowFunctionNodeTest {
     WindowFunctionNode node = nodeWithLowerBound(Literal.create(null, DataTypes.LongType));
     GlutenNotSupportException e = assertThrows(GlutenNotSupportException.class, node::toProtobuf);
     assertTrue(e.getMessage(), e.getMessage().endsWith("null (bigint)"));
+  }
+
+  @Test
+  public void longOffsetCheckMatchesConversion() {
+    assertFalse(
+        WindowFunctionsBuilder.isLongOffset(
+            Literal.create(new BigDecimal("-10.00"), DataTypes.createDecimalType(10, 2))));
+    assertFalse(WindowFunctionsBuilder.isLongOffset(Literal.create(null, DataTypes.LongType)));
+    assertTrue(
+        WindowFunctionsBuilder.isLongOffset(
+            Literal.create(new BigDecimal("10"), DataTypes.createDecimalType(10, 0))));
+    assertTrue(WindowFunctionsBuilder.isLongOffset(Literal.create(-3L, DataTypes.LongType)));
+    assertTrue(WindowFunctionsBuilder.isLongOffset(CurrentRow$.MODULE$));
   }
 
   @Test
