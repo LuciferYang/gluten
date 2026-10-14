@@ -323,6 +323,13 @@ class TaskResourceRegistry extends Logging {
 
   /** Release all managed resources according to priority and reversed order */
   private[task] def releaseAll(): Unit = lock {
+    // Mark released on every exit: a fatal throwable from a release callback skips the rest
+    // of the pass, but the completion listener still removes the map entry.
+    try releaseAll0()
+    finally released = true
+  }
+
+  private def releaseAll0(): Unit = {
     val failures = mutable.ArrayBuffer.empty[Throwable]
     def safeResourceName(resource: TaskResource): String =
       try resource.resourceName()
@@ -358,7 +365,6 @@ class TaskResourceRegistry extends Logging {
     }
     priorityToResourcesMapping.clear()
     resources.clear()
-    released = true
     failures.headOption.foreach {
       failure =>
         // Keep the remaining failures attached; the logs are the only other

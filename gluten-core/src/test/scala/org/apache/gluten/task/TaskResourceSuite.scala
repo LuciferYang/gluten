@@ -20,13 +20,15 @@ import org.apache.spark.TaskContext
 import org.apache.spark.memory.{MemoryConsumer, MemoryMode}
 import org.apache.spark.sql.catalyst.plans.SQLHelper
 import org.apache.spark.sql.internal.SQLConf
-import org.apache.spark.task.{TaskResource, TaskResources}
+import org.apache.spark.task.{TaskResource, TaskResourceRegistry, TaskResources}
 import org.apache.spark.util.SparkTaskUtil
 
 import org.scalatest.funsuite.AnyFunSuite
 
 import java.util.UUID
+import java.util.concurrent.TimeUnit
 
+import scala.util.Try
 import scala.util.control.NonFatal
 
 class TaskResourceSuite extends AnyFunSuite with SQLHelper {
@@ -172,13 +174,35 @@ class TaskResourceSuite extends AnyFunSuite with SQLHelper {
   }
 
   test("Run unsafe - registering into a released registry fails") {
-    // A thread sharing the task's TaskContext can fetch the registry while the release
-    // pass runs outside the global lock. Its registration must fail loudly instead of
-    // landing in the cleared registry, where nothing would ever release it.
+    val outcome = registerDuringRelease(() => ())
+    assert(outcome.isSuccess, outcome)
+  }
+
+  test("Run unsafe - registering after a fatal release failure fails") {
+    // A fatal throwable skips the rest of the release pass, but the completion listener
+    // still removes the map entry, so the registry must be rejected on this path too.
+    // scalastyle:off throwerror
+    val outcome = registerDuringRelease(() => throw new LinkageError("fatal release failure"))
+    // scalastyle:on throwerror
+    assert(outcome.isFailure)
+    val trace = {
+      val writer = new java.io.StringWriter()
+      outcome.failed.get.printStackTrace(new java.io.PrintWriter(writer))
+      writer.toString
+    }
+    assert(trace.contains("fatal release failure"))
+  }
+
+  /**
+   * Runs a task whose release pass lets a thread sharing the task's TaskContext fetch the registry
+   * and queue on its lock, then ends the pass with `endRelease`. Asserts that the late registration
+   * was rejected by the released registry, where nothing would ever release it, and returns the
+   * task's outcome.
+   */
+  private def registerDuringRelease(endRelease: () => Unit): Try[_] = {
     var lateFailure: Option[Throwable] = None
-    var lateReleased = false
     var child: Thread = null
-    TaskResources.runUnsafe {
+    val outcome = Try(TaskResources.runUnsafe {
       val tc = TaskContext.get()
       TaskResources.addResource(
         UUID.randomUUID().toString,
@@ -191,7 +215,7 @@ class TaskResourceSuite extends AnyFunSuite with SQLHelper {
                   TaskResources.addResource(
                     UUID.randomUUID().toString,
                     new TaskResource {
-                      override def release(): Unit = lateReleased = true
+                      override def release(): Unit = {}
                       override def resourceName(): String = "late resource"
                     })
                 } catch {
@@ -201,16 +225,36 @@ class TaskResourceSuite extends AnyFunSuite with SQLHelper {
                 }
               })
             child.start()
-            // Simulate a slow native teardown.
-            Thread.sleep(500)
+            awaitBlockedOnRegistry(child)
+            endRelease()
           }
-          override def resourceName(): String = "slow releaser"
+          override def resourceName(): String = "releaser"
         }
       )
-    }
+    })
     child.join(30000)
     assert(!child.isAlive)
-    assert(!lateReleased)
-    assert(lateFailure.exists(_.isInstanceOf[IllegalStateException]))
+    // A missing map entry also fails with IllegalStateException; only the registry's own
+    // check says "already released".
+    assert(
+      lateFailure.exists(
+        f => f.isInstanceOf[IllegalStateException] && f.getMessage.contains("already released")),
+      s"late registration was not rejected by the released registry: $lateFailure"
+    )
+    outcome
+  }
+
+  // Waits until `t` is blocked entering the registry lock: it already holds the registry, so
+  // the map entry's removal no longer matters, and it cannot proceed until the release ends.
+  private def awaitBlockedOnRegistry(t: Thread): Unit = {
+    val registryClass = classOf[TaskResourceRegistry].getName
+    val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(30)
+    while (
+      t.getState != Thread.State.BLOCKED ||
+      !t.getStackTrace.headOption.exists(_.getClassName == registryClass)
+    ) {
+      assert(System.nanoTime() < deadline, "late registration never reached the registry lock")
+      Thread.sleep(10)
+    }
   }
 }
