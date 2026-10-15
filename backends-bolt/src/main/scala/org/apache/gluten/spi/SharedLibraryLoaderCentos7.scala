@@ -16,9 +16,9 @@
  */
 package org.apache.gluten.spi
 
-import java.util.Locale
-
 import org.apache.gluten.jni.BoltJniLibLoader
+
+import java.util.Locale
 
 class SharedLibraryLoaderCentos7 extends SharedLibraryLoader {
   override def accepts(osName: String, osVersion: String): Boolean = {

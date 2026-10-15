@@ -16,9 +16,9 @@
  */
 package org.apache.gluten.spi
 
-import java.util.Locale
-
 import org.apache.gluten.jni.BoltJniLibLoader
+
+import java.util.Locale
 
 class SharedLibraryLoaderCentos8 extends SharedLibraryLoader {
 
