@@ -16,6 +16,8 @@
  */
 package org.apache.gluten.spi
 
+import java.util.Locale
+
 import org.apache.gluten.jni.BoltJniLibLoader
 
 class SharedLibraryLoaderCentos7 extends SharedLibraryLoader {
@@ -25,7 +27,7 @@ class SharedLibraryLoaderCentos7 extends SharedLibraryLoader {
     (osName.contains("Anolis") && osVersion.startsWith("7")) ||
     (osName.contains("Red Hat") && osVersion.startsWith("7")) ||
     (osName.contains("Alibaba Cloud Linux") && osVersion.startsWith("2")) ||
-    (osName.contains("tencentos") && osVersion.contains("2.4"))
+    (osName.toLowerCase(Locale.ROOT).contains("tencentos") && osVersion.contains("2.4"))
   }
 
   override def loadLib(loader: BoltJniLibLoader): Unit = {
