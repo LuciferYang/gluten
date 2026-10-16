@@ -21,7 +21,7 @@ import org.apache.gluten.extension.columnar.validator.FallbackInjects
 
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.catalyst.expressions.aggregate.{Final, Partial}
-import org.apache.spark.sql.execution.aggregate.BaseAggregateExec
+import org.apache.spark.sql.execution.aggregate.{BaseAggregateExec, HashAggregateExec, ObjectHashAggregateExec, SortAggregateExec}
 import org.apache.spark.sql.execution.exchange.ShuffleExchangeLike
 import org.apache.spark.sql.internal.SQLConf
 import org.apache.spark.sql.types._
@@ -415,6 +415,40 @@ abstract class VeloxAggregateFunctionsSuite extends VeloxWholeStageTransformerSu
                 plan.isInstanceOf[HashAggregateExecTransformer]
               }) == 4)
         }
+    }
+  }
+
+  test("regr_r2 with a vanilla Spark aggregation phase") {
+    // histogram_numeric is not offloaded, so the DISTINCT rewrite runs the first regr_r2 phases
+    // in Velox and the rest in vanilla Spark, which reads Velox's intermediate buffer.
+    // k = 3 has a constant x and k = 4 a constant y.
+    withTable("regr_r2_src") {
+      Seq(
+        (1, 1.0, 2.0, 1),
+        (1, 2.0, 4.5, 2),
+        (1, 3.5, 3.5, 1),
+        (1, 4.0, 8.0, 3),
+        (2, 1.5, 1.0, 2),
+        (2, 2.5, 3.0, 2),
+        (2, 3.0, 6.5, 4),
+        (2, 5.0, 5.0, 1),
+        (3, 2.0, 1.0, 1),
+        (3, 2.0, 3.0, 2),
+        (3, 2.0, 7.0, 3),
+        (4, 1.0, 5.0, 1),
+        (4, 3.0, 5.0, 2),
+        (4, 6.0, 5.0, 3)
+      ).toDF("k", "x", "y", "z").write.format("parquet").saveAsTable("regr_r2_src")
+      runQueryAndCompare(
+        "select k, regr_r2(y, x), histogram_numeric(distinct z, 3) from regr_r2_src group by k") {
+        df =>
+          val plan = getExecutedPlan(df)
+          assert(plan.exists(_.isInstanceOf[HashAggregateExecTransformer]))
+          assert(plan.exists {
+            case _: HashAggregateExec | _: ObjectHashAggregateExec | _: SortAggregateExec => true
+            case _ => false
+          })
+      }
     }
   }
 
