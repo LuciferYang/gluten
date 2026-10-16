@@ -470,8 +470,8 @@ abstract class VeloxAggregateFunctionsSuite extends VeloxWholeStageTransformerSu
 
   test("regr_r2 with a vanilla Spark partial and a Velox final aggregation") {
     withRegrR2Table {
-      // Velox evaluates regr_r2 with SPARK-55969's semantics, which differ from older Spark
-      // versions when x or y is constant, so only k = 1 and k = 2 are compared here.
+      // For a constant x or y, Velox's final regr_r2 result matches Spark only after SPARK-55969,
+      // so only k = 1 and k = 2 are compared here.
       FallbackInjects.fallbackOn {
         case agg: BaseAggregateExec => agg.aggregateExpressions.exists(_.mode == Partial)
       } {
