@@ -1307,7 +1307,8 @@ class VeloxAggregateFunctionsFlushSuite extends VeloxAggregateFunctionsSuite {
     withSQLConf(
       SQLConf.ADAPTIVE_EXECUTION_ENABLED.key -> "false",
       SQLConf.FILES_MAX_PARTITION_BYTES.key -> "1k") {
-      runQueryAndCompare("select count(distinct l_partkey) from lineitem group by l_orderkey") {
+      runQueryAndCompare(
+        "select count(distinct l_partkey), count(*) from lineitem group by l_orderkey") {
         df =>
           val executedPlan = getExecutedPlan(df)
           val regularAggCount = executedPlan.count {
@@ -1346,10 +1347,17 @@ class VeloxAggregateFunctionsFlushSuite extends VeloxAggregateFunctionsSuite {
             |  aggregate(histogram_numeric(distinct z, 5), 0D, (acc, e) -> acc + e.y)
             |from flush_distinct_src group by k
             |""".stripMargin
-        // With useObjectHashAggregateExec=false the vanilla aggregates are SortAggregateExec.
-        Seq("true", "false").foreach {
-          useObjectHashAgg =>
-            withSQLConf(SQLConf.USE_OBJECT_HASH_AGG.key -> useObjectHashAgg) {
+        // With useObjectHashAggregateExec=false the vanilla aggregates are SortAggregateExec, which
+        // reads its child through a local sort; with columnar sort off that sort is a SortExec.
+        Seq(
+          Seq(SQLConf.USE_OBJECT_HASH_AGG.key -> "true"),
+          Seq(SQLConf.USE_OBJECT_HASH_AGG.key -> "false"),
+          Seq(
+            SQLConf.USE_OBJECT_HASH_AGG.key -> "false",
+            GlutenConfig.COLUMNAR_SORT_ENABLED.key -> "false")
+        ).foreach {
+          confs =>
+            withSQLConf(confs: _*) {
               runQueryAndCompare(sql) {
                 df =>
                   val distinctPartialAggs = getExecutedPlan(df).collect {
