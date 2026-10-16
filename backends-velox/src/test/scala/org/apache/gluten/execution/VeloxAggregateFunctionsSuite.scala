@@ -20,7 +20,7 @@ import org.apache.gluten.config.{GlutenConfig, VeloxConfig}
 import org.apache.gluten.extension.columnar.validator.FallbackInjects
 
 import org.apache.spark.SparkConf
-import org.apache.spark.sql.catalyst.expressions.aggregate.{Final, Partial}
+import org.apache.spark.sql.catalyst.expressions.aggregate.{Final, Partial, PartialMerge}
 import org.apache.spark.sql.execution.aggregate.BaseAggregateExec
 import org.apache.spark.sql.execution.exchange.ShuffleExchangeLike
 import org.apache.spark.sql.internal.SQLConf
@@ -1323,6 +1323,61 @@ class VeloxAggregateFunctionsFlushSuite extends VeloxAggregateFunctionsSuite {
             flushableAggCount == 2,
             s"expected 2 flushable hash aggregates in one-distinct pipeline, got" +
               s" $flushableAggCount")
+      }
+    }
+  }
+
+  test("flushable aggregate rule - vanilla distinct-partial keeps partial merge regular") {
+    withSQLConf(SQLConf.ADAPTIVE_EXECUTION_ENABLED.key -> "false") {
+      withTable("flush_distinct_src") {
+        spark
+          .range(0, 30000, 1, 10)
+          .selectExpr("id % 28000 as z")
+          .selectExpr("z % 3 as k", "z")
+          .write
+          .format("parquet")
+          .saveAsTable("flush_distinct_src")
+        // histogram_numeric is not offloaded, so the distinct-partial aggregate runs in vanilla
+        // Spark on top of the offloaded PartialMerge aggregate. Summing the histogram counts gives
+        // the number of distinct z values it saw.
+        val sql =
+          """
+            |select k, count(distinct z), count(*),
+            |  aggregate(histogram_numeric(distinct z, 5), 0D, (acc, e) -> acc + e.y)
+            |from flush_distinct_src group by k
+            |""".stripMargin
+        // With useObjectHashAggregateExec=false the vanilla aggregates are SortAggregateExec.
+        Seq("true", "false").foreach {
+          useObjectHashAgg =>
+            withSQLConf("spark.sql.execution.useObjectHashAggregateExec" -> useObjectHashAgg) {
+              runQueryAndCompare(sql) {
+                df =>
+                  val distinctPartialAggs = getExecutedPlan(df).collect {
+                    case agg: BaseAggregateExec
+                        if agg.aggregateExpressions.exists(
+                          e => e.isDistinct && e.mode == Partial) =>
+                      agg
+                  }
+                  assert(
+                    distinctPartialAggs.nonEmpty &&
+                      distinctPartialAggs.forall(!_.isInstanceOf[HashAggregateExecTransformer]),
+                    "expected the distinct-partial aggregate to run in vanilla Spark"
+                  )
+                  val partialMergeAggs = distinctPartialAggs.flatMap(_.collectFirst {
+                    case agg: HashAggregateExecTransformer
+                        if agg.aggregateExpressions.forall(_.mode == PartialMerge) =>
+                      agg
+                  })
+                  assert(
+                    partialMergeAggs.nonEmpty &&
+                      partialMergeAggs.forall(
+                        !_.isInstanceOf[FlushableHashAggregateExecTransformer]),
+                    "the PartialMerge aggregate below the distinct-partial aggregate must not be " +
+                      "flushable"
+                  )
+              }
+            }
+        }
       }
     }
   }
