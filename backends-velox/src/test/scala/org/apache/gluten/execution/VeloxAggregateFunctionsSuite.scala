@@ -1338,8 +1338,8 @@ class VeloxAggregateFunctionsFlushSuite extends VeloxAggregateFunctionsSuite {
           .format("parquet")
           .saveAsTable("flush_distinct_src")
         // histogram_numeric is not offloaded, so the distinct-partial aggregate runs in vanilla
-        // Spark on top of the offloaded PartialMerge aggregate. Summing the histogram counts gives
-        // the number of distinct z values it saw.
+        // Spark on top of the offloaded PartialMerge aggregate. The raw histogram depends on input
+        // order, so only the sum of its counts is compared.
         val sql =
           """
             |select k, count(distinct z), count(*),
@@ -1349,7 +1349,7 @@ class VeloxAggregateFunctionsFlushSuite extends VeloxAggregateFunctionsSuite {
         // With useObjectHashAggregateExec=false the vanilla aggregates are SortAggregateExec.
         Seq("true", "false").foreach {
           useObjectHashAgg =>
-            withSQLConf("spark.sql.execution.useObjectHashAggregateExec" -> useObjectHashAgg) {
+            withSQLConf(SQLConf.USE_OBJECT_HASH_AGG.key -> useObjectHashAgg) {
               runQueryAndCompare(sql) {
                 df =>
                   val distinctPartialAggs = getExecutedPlan(df).collect {
@@ -1369,9 +1369,10 @@ class VeloxAggregateFunctionsFlushSuite extends VeloxAggregateFunctionsSuite {
                       agg
                   })
                   assert(
-                    partialMergeAggs.nonEmpty &&
-                      partialMergeAggs.forall(
-                        !_.isInstanceOf[FlushableHashAggregateExecTransformer]),
+                    partialMergeAggs.nonEmpty,
+                    "expected an offloaded PartialMerge aggregate below the distinct-partial one")
+                  assert(
+                    partialMergeAggs.forall(!_.isInstanceOf[FlushableHashAggregateExecTransformer]),
                     "the PartialMerge aggregate below the distinct-partial aggregate must not be " +
                       "flushable"
                   )
