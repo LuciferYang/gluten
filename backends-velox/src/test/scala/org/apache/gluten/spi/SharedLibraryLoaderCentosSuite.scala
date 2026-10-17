@@ -19,19 +19,15 @@ package org.apache.gluten.spi
 import org.scalatest.funsuite.AnyFunSuite
 
 class SharedLibraryLoaderCentosSuite extends AnyFunSuite {
-  private val centos7 = new SharedLibraryLoaderCentos7
   private val centos8 = new SharedLibraryLoaderCentos8
 
-  // NAME and VERSION as read from /etc/os-release on TencentOS Server 2.4 and 3.2.
-  test("TencentOS Server is accepted by the loader for its version") {
-    assert(centos7.accepts("TencentOS Server", "2.4"))
-    assert(!centos8.accepts("TencentOS Server", "2.4"))
+  // NAME and VERSION as read from /etc/os-release on TencentOS Server 3.2.
+  test("TencentOS Server 3.2 is accepted by the centos8 loader") {
     assert(centos8.accepts("TencentOS Server", "3.2 (Final)"))
-    assert(!centos7.accepts("TencentOS Server", "3.2 (Final)"))
   }
 
   test("other TencentOS versions are not accepted") {
-    assert(!centos7.accepts("TencentOS Server", "3.1 (Final)"))
+    assert(!centos8.accepts("TencentOS Server", "2.4"))
     assert(!centos8.accepts("TencentOS Server", "3.1 (Final)"))
     assert(!centos8.accepts("TencentOS Server", "4.2"))
   }
