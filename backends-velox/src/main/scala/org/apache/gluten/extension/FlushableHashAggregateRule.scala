@@ -134,7 +134,9 @@ case class FlushableHashAggregateRule(session: SparkSession) extends Rule[SparkP
     protectedAggIds.result()
   }
 
-  /** If this aggregate is the distinct-partial stage, return its child PartialMerge aggregate. */
+  /**
+   * If this aggregate is the distinct-partial stage, return the PartialMerge aggregate below it.
+   */
   private def findProtectedPartialMergeAgg(
       distinctPartialAgg: BaseAggregateExec): Option[HashAggregateExecTransformer] = {
     if (
