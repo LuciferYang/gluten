@@ -18,6 +18,7 @@
 #include "MemoryAllocator.h"
 #include "utils/Macros.h"
 
+#include <cstdint>
 #include <limits>
 
 namespace gluten {
@@ -172,7 +173,20 @@ bool StdMemoryAllocator::reallocateAligned(void* p, uint64_t alignment, int64_t 
     auto aligned = ROUND_TO_LINE(static_cast<uint64_t>(newSize), alignment);
     if (aligned <= size) {
       // shrink-to-fit
-      return reallocate(p, size, aligned, out);
+      if (!reallocate(p, size, aligned, out)) {
+        return false;
+      }
+      // realloc only guarantees fundamental alignment, so the moved block may not be aligned to alignment.
+      if (reinterpret_cast<uintptr_t>(*out) % alignment != 0) {
+        void* alignedP = std::aligned_alloc(alignment, aligned);
+        // p is already released, so keep the moved block rather than fail if this allocation fails.
+        if (alignedP != nullptr) {
+          memcpy(alignedP, *out, aligned);
+          std::free(*out);
+          *out = alignedP;
+        }
+      }
+      return true;
     }
   }
   void* reallocatedP = std::aligned_alloc(alignment, newSize);
