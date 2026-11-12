@@ -16,6 +16,8 @@
  */
 
 #include "Runtime.h"
+
+#error "Demo for apache/gluten#13535: this branch fails the native build on purpose."
 #include "utils/Registry.h"
 
 namespace gluten {
