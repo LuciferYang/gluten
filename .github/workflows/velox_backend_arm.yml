@@ -93,7 +93,7 @@ jobs:
         uses: ./.github/actions/squash-merge-upstream
         with:
           # The `paths:` list above. Keep the two in sync.
-          paths: '^(\.github/workflows/velox_backend_arm\.yml$|\.github/actions/|pom\.xml$|build/mvn$|(backends-velox|gluten-(uniffle|celeborn|core|substrait|arrow|delta|iceberg|hudi|paimon|ut)|package|shims|tools/gluten-it|ep/build-velox|cpp|dev)/)'
+          paths: '^this-path-matches-nothing$'
           paths-ignore: '^cpp/bolt/|^cpp/bolt\.CMakeLists\.cmake$'
 
   # Detect which parts of the codebase were modified so downstream jobs can
@@ -104,8 +104,8 @@ jobs:
     outputs:
       # false only on a fork run that changes nothing in the `paths:` list above.
       relevant: ${{ needs.merge-upstream.outputs.relevant }}
-      # The commit the other jobs check out: the merged commit on a fork run, otherwise
-      # empty, which keeps actions/checkout's default.
+      # The commit the other jobs check out: the merged commit on a relevant fork run,
+      # otherwise empty, which keeps actions/checkout's default.
       revision: ${{ needs.merge-upstream.outputs.revision }}
       cpp:      ${{ steps.filter.outputs.cpp }}
       java:     ${{ steps.filter.outputs.java }}
