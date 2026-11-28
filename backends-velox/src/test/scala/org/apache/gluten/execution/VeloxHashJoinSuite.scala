@@ -828,7 +828,8 @@ class VeloxHashJoinSuite extends VeloxWholeStageTransformerSuite {
 
   test("joins that reuse a broadcast but filter nulls differently get their own hash table") {
     // With a bigint probe key, the build key is cast(build.k as bigint), which the broadcast
-    // exchange adds to the build side as a column.
+    // exchange adds to the build side as a column. The hash table is then built with the columns
+    // named as in the broadcast relation, not as in the join that reuses the exchange.
     Seq("int", "bigint").foreach {
       probeKeyType =>
         val probeKey: Int => Any = k => if (probeKeyType == "int") k else k.toLong
