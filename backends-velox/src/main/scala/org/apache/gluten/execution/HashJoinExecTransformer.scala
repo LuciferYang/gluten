@@ -314,12 +314,32 @@ case class BroadcastHashJoinContext(
         substraitJoinType == JoinRel.JoinType.JOIN_TYPE_LEFT_ANTI &&
         hasMixedFiltCondition && filterPropagatesNulls
       ) {
-        val buildColumns = buildSideStructure.map(ConverterUtils.genColumnNameWithExprId)
-        filterBuildColumns.map(buildColumns.indexOf(_)).sorted.distinct.toList
+        filterBuildColumnPositions.sorted.distinct.toList
       } else {
         Nil
       }
     HashTableBuildKey(droppedDuplicates, nullFilteredColumns)
+  }
+
+  /**
+   * The build columns the filter reads, named as in `buildOutput`, the output of the broadcast
+   * relation that the native hash table is built from. A join that reuses the broadcast exchange
+   * names them with other expression IDs, so they are matched by position.
+   */
+  def filterBuildColumnsIn(buildOutput: Seq[Attribute]): Array[String] =
+    filterBuildColumnPositions.map(i => ConverterUtils.genColumnNameWithExprId(buildOutput(i)))
+
+  private def filterBuildColumnPositions: Array[Int] = {
+    val buildColumns = buildSideStructure.map(ConverterUtils.genColumnNameWithExprId)
+    filterBuildColumns.map {
+      column =>
+        val position = buildColumns.indexOf(column)
+        if (position < 0) {
+          throw new IllegalStateException(
+            s"Join filter column $column is not in the build side: ${buildColumns.mkString(", ")}")
+        }
+        position
+    }
   }
 }
 
